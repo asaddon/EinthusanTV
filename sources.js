@@ -188,6 +188,13 @@ async function getImdbId(title, year) {
 
 // Optimized title fetching from IMDb
 async function ttnumberToTitle(ttNumber) {
+    // Validate ttNumber format
+    const imdbIdPattern = /^tt\d{7,8}$/;
+    if (!imdbIdPattern.test(ttNumber)) {
+        console.error(`Invalid IMDb ID format: ${ttNumber}`);
+        return null;
+    }
+
     // Step 1: Generate cache keys for the IMDb ID and country check
     const cacheKey = `title_${ttNumber}`;
     const countryCacheKey = `country_${ttNumber}`;
