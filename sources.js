@@ -64,7 +64,9 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
     };
 
     try {
-        await Promise.all(config.langs.map((lang) => fetchMoviesForLanguage(lang)));
+        for (const lang of config.langs) {
+            await fetchMoviesForLanguage(lang);
+        }
 
         // Log final summary only on the first run or if new movies are found
         if (isFirstRun || newMoviesAdded) {
@@ -727,77 +729,84 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
                     console.warn(`No movie results found on page ${page}.`);
                 }
 
-                const movies = await Promise.all(
-                    searchResults.map(async (item) => {
-                        try {
-                            const imgElement = item.querySelector("div.block1 a img");
-                            const infoElement = item.querySelector("div.info p");
-                            const titleElement = item.querySelector("a.title h3");
-                            const idElement = item.querySelector("a.title");
-                            const ttElement = item.querySelectorAll("div.extras a")[0];
-                            const synopsisElement = item.querySelector("p.synopsis");
-                            const trailerElement = item.querySelectorAll("div.extras a")[1];
-
-                            if (!imgElement || !infoElement || !titleElement || !idElement || !ttElement) return null;
-
-                            const img = imgElement.rawAttributes?.src || null;
-                            const year = infoElement.childNodes[0]?.rawText.trim() || null;
-                            const title = titleElement.rawText ? decodeHtmlEntities(titleElement.rawText.trim()) : null;
-                            const einthusanId = idElement.rawAttributes?.href?.split('/')[3] || null;
-                            const ttNumber = ttElement?.rawAttributes['href']?.match(/tt\d+/)?.[0] || null;
-
-                            if (!img || !year || !title || !einthusanId) return null;
-
-                            let imdbId = ttNumber; // Default to ttNumber
-                            if (!imdbId) {
-                                imdbId = await verifyImdbTitle(title, year).catch(() => null); // Fallback to verifyImdbTitle if ttNumber is not available
+                const movies = [];
+                const chunkSize = 5;
+                const searchResultsArray = Array.from(searchResults);
+                for (let i = 0; i < searchResultsArray.length; i += chunkSize) {
+                    const chunk = searchResultsArray.slice(i, i + chunkSize);
+                    const chunkResults = await Promise.all(
+                        chunk.map(async (item) => {
+                            try {
+                                const imgElement = item.querySelector("div.block1 a img");
+                                const infoElement = item.querySelector("div.info p");
+                                const titleElement = item.querySelector("a.title h3");
+                                const idElement = item.querySelector("a.title");
+                                const ttElement = item.querySelectorAll("div.extras a")[0];
+                                const synopsisElement = item.querySelector("p.synopsis");
+                                const trailerElement = item.querySelectorAll("div.extras a")[1];
+    
+                                if (!imgElement || !infoElement || !titleElement || !idElement || !ttElement) return null;
+    
+                                const img = imgElement.rawAttributes?.src || null;
+                                const year = infoElement.childNodes[0]?.rawText.trim() || null;
+                                const title = titleElement.rawText ? decodeHtmlEntities(titleElement.rawText.trim()) : null;
+                                const einthusanId = idElement.rawAttributes?.href?.split('/')[3] || null;
+                                const ttNumber = ttElement?.rawAttributes['href']?.match(/tt\d+/)?.[0] || null;
+    
+                                if (!img || !year || !title || !einthusanId) return null;
+    
+                                let imdbId = ttNumber; // Default to ttNumber
+                                if (!imdbId) {
+                                    imdbId = await verifyImdbTitle(title, year).catch(() => null); // Fallback to verifyImdbTitle if ttNumber is not available
+                                }
+    
+                                const finalId = imdbId || `einthusan_${einthusanId}`;
+    
+                                const description = synopsisElement ? decodeHtmlEntities(synopsisElement.rawText.trim()) : null;
+                                const trailer = trailerElement?.rawAttributes['href']?.split("v=")[1] || null;
+    
+                                const castAndRoles = Array.from(item.querySelectorAll("div.prof")).map(prof => {
+                                    const name = prof.querySelector("p")?.rawText.trim() || null;
+                                    const role = prof.querySelector("label")?.rawText.trim() || null;
+                                    return name && role ? { name, role } : null;
+                                }).filter(Boolean);
+    
+                                const directors = castAndRoles.filter(item => item.role.toLowerCase() === "director").map(item => item.name) || [];
+                                const actors = castAndRoles.filter(item => !["director", "writer"].includes(item.role.toLowerCase())).map(item => item.name) || [];
+    
+                                // Use the poster URL as is (no RPDB logic)
+                                const posterUrl = img.startsWith('http') ? img : `https:${img}`;
+    
+                                return {
+                                    id: finalId,
+                                    EinthusanID: einthusanId,
+                                    type: "movie",
+                                    name: title,
+                                    poster: posterUrl,
+                                    releaseInfo: year,
+                                    description,
+                                    trailers: trailer ? [{ source: trailer, type: "Trailer" }] : [],
+                                    links: [
+                                        ...actors.map(actor => ({
+                                            name: actor,
+                                            category: "Cast",
+                                            url: `stremio:///search?search=${encodeURIComponent(actor)}`
+                                        })),
+                                        ...directors.map(director => ({
+                                            name: director,
+                                            category: "Directors",
+                                            url: `stremio:///search?search=${encodeURIComponent(director)}`
+                                        }))
+                                    ]
+                                };
+                            } catch (err) {
+                                console.error(`Error processing movie on page ${page}:`, err.message);
+                                return null; // Skip this movie and continue
                             }
-
-                            const finalId = imdbId || `einthusan_${einthusanId}`;
-
-                            const description = synopsisElement ? decodeHtmlEntities(synopsisElement.rawText.trim()) : null;
-                            const trailer = trailerElement?.rawAttributes['href']?.split("v=")[1] || null;
-
-                            const castAndRoles = Array.from(item.querySelectorAll("div.prof")).map(prof => {
-                                const name = prof.querySelector("p")?.rawText.trim() || null;
-                                const role = prof.querySelector("label")?.rawText.trim() || null;
-                                return name && role ? { name, role } : null;
-                            }).filter(Boolean);
-
-                            const directors = castAndRoles.filter(item => item.role.toLowerCase() === "director").map(item => item.name) || [];
-                            const actors = castAndRoles.filter(item => !["director", "writer"].includes(item.role.toLowerCase())).map(item => item.name) || [];
-
-                            // Use the poster URL as is (no RPDB logic)
-                            const posterUrl = img.startsWith('http') ? img : `https:${img}`;
-
-                            return {
-                                id: finalId,
-                                EinthusanID: einthusanId,
-                                type: "movie",
-                                name: title,
-                                poster: posterUrl,
-                                releaseInfo: year,
-                                description,
-                                trailers: trailer ? [{ source: trailer, type: "Trailer" }] : [],
-                                links: [
-                                    ...actors.map(actor => ({
-                                        name: actor,
-                                        category: "Cast",
-                                        url: `stremio:///search?search=${encodeURIComponent(actor)}`
-                                    })),
-                                    ...directors.map(director => ({
-                                        name: director,
-                                        category: "Directors",
-                                        url: `stremio:///search?search=${encodeURIComponent(director)}`
-                                    })),
-                                ]
-                            };
-                        } catch (err) {
-                            console.error(`Error processing movie on page ${page}:`, err.message);
-                            return null; // Skip this movie and continue
-                        }
-                    })
-                );
+                        })
+                    );
+                    movies.push(...chunkResults);
+                }
 
                 const validMovies = movies.filter(Boolean);
                 //console.info(`Fetched ${validMovies.length} Movies From Page: ${page} In Language: ${capitalizeFirstLetter(lang)}`);
@@ -814,12 +823,14 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
             }
         };
 
-        const pagePromises = [];
+        const allPages = [];
         for (let i = 1; i <= maxPages; i++) {
-            pagePromises.push(fetchPage(i));
+            const pageData = await fetchPage(i);
+            allPages.push(pageData);
+            if (i < maxPages) {
+                await sleep(500); // 500ms delay between pages
+            }
         }
-
-        const allPages = await Promise.all(pagePromises);
         const uniqueMovies = new Map();
 
         allPages.flat().forEach(movie => {

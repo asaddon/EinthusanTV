@@ -10,6 +10,7 @@
 		"axios": "latest",
 		"axios-cookiejar-support": "latest",
 		"cheerio": "latest",
+		"compression": "latest",
 		"cors": "latest",
 		"dotenv": "latest",
 		"express": "latest",

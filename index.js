@@ -1,4 +1,5 @@
 const express = require("express");
+const compression = require("compression");
 const cors = require('cors');
 const path = require('path');
 const sources = require("./sources");
@@ -8,6 +9,7 @@ const schedule = require('node-schedule');
 require('dotenv').config();
 
 const app = express();
+app.use(compression());
 
 // Prevent multiple responses middleware
 app.use((req, res, next) => {
