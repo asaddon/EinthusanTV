@@ -814,6 +814,7 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
                         })
                     );
                     movies.push(...chunkResults);
+                    await sleep(200); // Give V8 Garbage Collector time to clear DOM objects from memory
                 }
 
                 const validMovies = movies.filter(Boolean);
