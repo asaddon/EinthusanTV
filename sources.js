@@ -539,8 +539,11 @@ async function stream(einthusan_id, lang) {
                 if (!imdbTitle) return;
 
                 // Handle getEinthusanIdByTitle promise locally
-                einthusan_id = await getEinthusanIdByTitle(imdbTitle, lang, einthusan_id).catch(() => null);
-                if (typeof einthusan_id === 'undefined') {
+                const resolvedId = await getEinthusanIdByTitle(imdbTitle, lang, einthusan_id).catch(() => null);
+                if (resolvedId) {
+                    await cache.set(`ttToEinthusan_${einthusan_id}`, resolvedId, 604800);
+                    einthusan_id = resolvedId;
+                } else {
                     throw new Error(`Einthusan ID could not be retrieved for Title: ${imdbTitle} in Language: ${capitalizeFirstLetter(lang)}`);
                 }
             }
