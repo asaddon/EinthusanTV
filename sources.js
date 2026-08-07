@@ -242,7 +242,7 @@ const normalizeTitle = (str) => str.toLowerCase().replace(/[\s\W_]+/g, '');
 
 // Implement request queue to prevent rate limiting
 class RequestQueue {
-    constructor(concurrency = 50) {
+    constructor(concurrency = 5) {
         this.queue = [];
         this.running = 0;
         this.concurrency = concurrency;
@@ -738,7 +738,7 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
                 }
 
                 const movies = [];
-                const chunkSize = 5;
+                const chunkSize = 2;
                 const searchResultsArray = Array.from(searchResults);
                 for (let i = 0; i < searchResultsArray.length; i += chunkSize) {
                     const chunk = searchResultsArray.slice(i, i + chunkSize);

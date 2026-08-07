@@ -217,7 +217,7 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
         }
 
         if (!metas) {
-            metas = await sources.getAllRecentMovies(15, configuration);
+            metas = await sources.getAllRecentMovies(1, configuration);
         }
 
         if (metas && Array.isArray(metas) && rpdbKey) {
