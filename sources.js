@@ -459,16 +459,20 @@ async function stream(einthusan_id, lang) {
         let validEinthusanId = false;
 
         if (einthusan_id.startsWith("tt")) {
-            const cacheKeyForMovies = `recent_movies_${lang}_15`;
-            const cachedMovies = cache.get(cacheKeyForMovies);
+            let mappedEinthusanId = cache.get(`ttToEinthusan_${einthusan_id}`);
 
-            let mappedEinthusanId;
-            if (cachedMovies) {
-                const movies = decompressData(cachedMovies);
-                const movie = movies.find(m => m.id === einthusan_id);
-                if (movie) {
-                    mappedEinthusanId = movie.EinthusanID;
-                    //console.info(`${useColors ? '\x1b[32m' : ''}Found Mapping For IMDB ID: ${einthusan_id} => EinthusanID: ${mappedEinthusanId}${useColors ? '\x1b[0m' : ''}`);
+            if (!mappedEinthusanId) {
+                // Fallback to checking the 15-page cache if the direct map isn't found
+                const cacheKeyForMovies = `recent_movies_${lang}_15`;
+                const cachedMovies = cache.get(cacheKeyForMovies);
+
+                if (cachedMovies) {
+                    const movies = decompressData(cachedMovies);
+                    const movie = movies.find(m => m.id === einthusan_id);
+                    if (movie) {
+                        mappedEinthusanId = movie.EinthusanID;
+                        cache.set(`ttToEinthusan_${einthusan_id}`, mappedEinthusanId, 604800);
+                    }
                 }
             }
 
@@ -592,6 +596,7 @@ async function getcatalogresults(url) {
                     }
 
                     const finalId = imdbId || `einthusan_${einthusanId}`;
+                    if (imdbId) cache.set(`ttToEinthusan_${imdbId}`, einthusanId, 604800);
 
                     const description = synopsisElement ? decodeHtmlEntities(synopsisElement.rawText.trim()) : null;
                     const trailer = trailerElement?.rawAttributes['href']?.split("v=")[1] || null;
@@ -769,6 +774,7 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
                                 }
     
                                 const finalId = imdbId || `einthusan_${einthusanId}`;
+                                if (imdbId) cache.set(`ttToEinthusan_${imdbId}`, einthusanId, 604800);
     
                                 const description = synopsisElement ? decodeHtmlEntities(synopsisElement.rawText.trim()) : null;
                                 const trailer = trailerElement?.rawAttributes['href']?.split("v=")[1] || null;
