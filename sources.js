@@ -689,6 +689,8 @@ async function getEinthusanIdByTitle(title, lang, ttnumber) {
     }
 }
 
+const pendingFetches = new Map();
+
 // Optimized function to get all recent movies with parallel processing
 async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch = false) {
     const cacheKey = `recent_movies_${lang}_${maxPages}`;
@@ -701,8 +703,14 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
         return decompressData(cached);
     }
 
-    try {
-        console.info(`${useColors ? '\x1b[33m' : ''}Fetching All Recent Movies For Language: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[36m' : ''}${capitalizeFirstLetter(lang)}${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[33m' : ''}, Max Pages: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[32m' : ''}${maxPages}${useColors ? '\x1b[0m' : ''}`);
+    if (!forceFetch && pendingFetches.has(cacheKey)) {
+        console.info(`${useColors ? '\x1b[33m' : ''}Fetch already in progress for ${lang}, waiting for completion...${useColors ? '\x1b[0m' : ''}`);
+        return pendingFetches.get(cacheKey);
+    }
+
+    const fetchPromise = (async () => {
+        try {
+            console.info(`${useColors ? '\x1b[33m' : ''}Fetching All Recent Movies For Language: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[36m' : ''}${capitalizeFirstLetter(lang)}${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[33m' : ''}, Max Pages: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[32m' : ''}${maxPages}${useColors ? '\x1b[0m' : ''}`);
 
         const fetchPage = async (page, retries = 10) => {
             const pageUrl = `/movie/results/?find=Recent&lang=${lang}&page=${page}`;
@@ -846,10 +854,16 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
 
         cache.set(cacheKey, compressData(results), 604800);
         return results;
-    } catch (err) {
-        console.error("Error in getAllRecentMovies:", err.message);
-        throw err; // Propagate the error to the caller
-    }
+        } catch (err) {
+            console.error("Error in getAllRecentMovies:", err.message);
+            throw err; // Propagate the error to the caller
+        } finally {
+            pendingFetches.delete(cacheKey);
+        }
+    })();
+
+    pendingFetches.set(cacheKey, fetchPromise);
+    return fetchPromise;
 }
 
 async function meta(einthusan_id, lang) {
