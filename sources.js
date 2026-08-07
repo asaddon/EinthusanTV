@@ -1050,5 +1050,6 @@ module.exports = {
     getAllRecentMovies,
     fetchRecentMoviesForAllLanguages,
     meta,
-    initializeClientWithSession
+    initializeClientWithSession,
+    decompressData
 };
