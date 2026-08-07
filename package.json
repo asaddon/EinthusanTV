@@ -13,7 +13,7 @@
 		"compression": "latest",
 		"cors": "latest",
 		"dotenv": "latest",
-		"express": "latest",
+		"express": "^4.21.1",
 		"name-to-imdb": "latest",
 		"node-cache": "latest",
 		"node-html-parser": "latest",
