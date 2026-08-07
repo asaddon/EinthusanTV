@@ -216,12 +216,27 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
             metas = await sources.search(catalogId, searchParams.get("search"));
         }
 
+        let isTempCatalog = false;
+
+        if (id === `${configuration}_board`) {
+            metas = cache.get(`recent_movies_${configuration}_15`);
+
+            if (!metas) {
+                metas = await sources.getAllRecentMovies(1, configuration);
+                isTempCatalog = true;
+            }
+        }
+
         if (!metas) {
-            metas = await sources.getAllRecentMovies(1, configuration);
+            metas = await sources.getAllRecentMovies(15, configuration);
         }
 
         if (metas && Array.isArray(metas) && rpdbKey) {
             metas = await updatePosterUrls(metas, rpdbKey);
+        }
+
+        if (isTempCatalog) {
+            res.setHeader('Cache-Control', 'max-age=30, stale-while-revalidate=30');
         }
 
         //console.log(`Sending response for: ${req.url}`);
