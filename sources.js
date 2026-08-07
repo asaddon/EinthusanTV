@@ -59,10 +59,14 @@ class CacheWrapper {
     async set(key, value, ttlSeconds = 1800) {
         if (this.useRedis) {
             try {
-                if (Buffer.isBuffer(value)) {
-                    await this.redis.set(key, value, "EX", ttlSeconds);
+                let valToStore = value;
+                if (!Buffer.isBuffer(value) && typeof value === 'object') {
+                    valToStore = JSON.stringify(value);
+                }
+                if (Buffer.isBuffer(valToStore)) {
+                    await this.redis.set(key, valToStore, "EX", ttlSeconds);
                 } else {
-                    await this.redis.set(key, String(value), "EX", ttlSeconds);
+                    await this.redis.set(key, String(valToStore), "EX", ttlSeconds);
                 }
             } catch (err) {
                 console.error("Redis Set Error:", err.message);
@@ -969,12 +973,15 @@ async function meta(einthusan_id, lang) {
             ? `tt_${einthusan_id}`
             : `einthusan_${einthusan_id}`;
         
-        const cachedMeta = await cache.get(cacheKey);
+        let cachedMeta = await cache.get(cacheKey);
 
         if (cachedMeta) {
-            const updatedMeta = { ...cachedMeta };
-            updatedMeta.id = originalId.startsWith("tt") ? originalId : `einthusan_${einthusan_id}`;
-            return updatedMeta;
+            cachedMeta = decompressData(cachedMeta);
+            if (cachedMeta && typeof cachedMeta === 'object') {
+                const updatedMeta = { ...cachedMeta };
+                updatedMeta.id = originalId.startsWith("tt") ? originalId : `einthusan_${einthusan_id}`;
+                return updatedMeta;
+            }
         }
         if (!einthusan_id) return;
         const url = `${config.BaseURL}/movie/watch/${einthusan_id}/`;
@@ -1037,7 +1044,7 @@ async function meta(einthusan_id, lang) {
             ]
         };
 
-        await cache.set(cacheKey, metaObj);
+        await cache.set(cacheKey, compressData(metaObj));
         return metaObj;
     } catch (e) {
         //console.error("Error in meta function:", e.message);
