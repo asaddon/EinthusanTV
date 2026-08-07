@@ -12,12 +12,60 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const zlib = require('zlib'); // Import zlib for compression
 const useColors = process.env.USE_COLORS === 'true' || false;
 // Enhanced caching configuration
-const cache = new NodeCache({
-    stdTTL: 30 * 60, // 30 minutes default TTL
-    checkperiod: 60 * 60,
-    useClones: false, // Disable cloning for better performance
-    maxKeys: 10000 // Limit cache size
-});
+const Redis = require("ioredis");
+
+class CacheWrapper {
+    constructor() {
+        this.useRedis = !!process.env.REDIS_URL;
+        if (this.useRedis) {
+            this.redis = new Redis(process.env.REDIS_URL);
+            console.log("Connected to Redis Cache.");
+        } else {
+            this.localCache = new NodeCache({
+                stdTTL: 30 * 60,
+                checkperiod: 60 * 60,
+                useClones: false,
+                maxKeys: 10000
+            });
+            console.log("Using Local NodeCache.");
+        }
+    }
+
+    async get(key) {
+        if (this.useRedis) {
+            try {
+                const val = await this.redis.getBuffer(key);
+                if (!val) return undefined;
+                // Check if it's a gzipped buffer (starts with 1F 8B)
+                if (val.length >= 2 && val[0] === 0x1f && val[1] === 0x8b) {
+                    return val;
+                }
+                return val.toString('utf8');
+            } catch (err) {
+                console.error("Redis Get Error:", err.message);
+                return undefined;
+            }
+        }
+        return this.localCache.get(key);
+    }
+
+    async set(key, value, ttlSeconds = 1800) {
+        if (this.useRedis) {
+            try {
+                if (Buffer.isBuffer(value)) {
+                    await this.redis.set(key, value, "EX", ttlSeconds);
+                } else {
+                    await this.redis.set(key, String(value), "EX", ttlSeconds);
+                }
+            } catch (err) {
+                console.error("Redis Set Error:", err.message);
+            }
+        } else {
+            this.localCache.set(key, value, ttlSeconds);
+        }
+    }
+}
+const cache = new CacheWrapper();
 // Function to fetch recent movies for all languages
 let isFirstRun = true;
 const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
@@ -26,7 +74,7 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
 
     const fetchMoviesForLanguage = async (lang) => {
         const cacheKey = `recent_movies_${lang}_${maxPages}`;
-        const cached = cache.get(cacheKey);
+        const cached = await cache.get(cacheKey);
 
         if (cached) {
             const cachedMovies = decompressData(cached);
@@ -44,7 +92,7 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
 
             if (uniqueNewMovies.length > 0) {
                 const updatedCache = uniqueNewMovies.concat(cachedMovies);
-                cache.set(cacheKey, compressData(updatedCache), 604800);
+                await cache.set(cacheKey, compressData(updatedCache), 604800);
                 console.info(`Added ${uniqueNewMovies.length} new movies for ${capitalizeFirstLetter(lang)}`);
                 results[lang] = updatedCache;
                 newMoviesAdded = true; // Mark that new movies were added
@@ -54,7 +102,7 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
         } else {
             try {
                 results[lang] = await getAllRecentMovies(maxPages, lang, false);
-                cache.set(cacheKey, compressData(results[lang]), 604800);
+                await cache.set(cacheKey, compressData(results[lang]), 604800);
                 newMoviesAdded = true; // Mark that new movies were added (since cache was empty)
             } catch (error) {
                 console.error(`Error fetching movies for language ${lang}:`, error);
@@ -320,7 +368,7 @@ async function getImdbId(title, year) {
     }
 
     const cacheKey = `imdb_${normalizeTitle(cleanedTitle)}_${year || 'any'}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
     if (cached) {
         //console.log(`Cache Hit For IMDb ID: ${cleanedTitle} ${year ? `(${year})` : ''}`);
         return decompressData(cached);
@@ -334,7 +382,7 @@ async function getImdbId(title, year) {
 
         if (result) {
             //console.log(`Fetched IMDb ID: ${result} For Title: "${cleanedTitle}"${year ? ` (${year})` : ''}`);
-            cache.set(cacheKey, compressData(result));
+            await cache.set(cacheKey, compressData(result));
             return result;  // Return the result immediately after caching
         }
         //console.warn(`${useColors ? '\x1b[33m' : ''}IMDB ID Not Found For Cleaned Title: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[36m' : ''}"${cleanedTitle}"${useColors ? '\x1b[0m' : ''}${cleanedTitle !== title ? `${useColors ? '\x1b[33m' : ''} Original Title: ${useColors ? '\x1b[36m' : ''}"${title}"${useColors ? '\x1b[0m' : ''}` : ''}${year ? ` ${useColors ? '\x1b[33m' : ''}(${year})${useColors ? '\x1b[0m' : ''}` : ''}`);
@@ -445,7 +493,7 @@ async function stream(einthusan_id, lang) {
 
     const imdb = einthusan_id;
     const cacheKey = `stream_${einthusan_id}_${lang}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
 
     if (cached) {
         const cachedResult = decompressData(cached);
@@ -459,19 +507,19 @@ async function stream(einthusan_id, lang) {
         let validEinthusanId = false;
 
         if (einthusan_id.startsWith("tt")) {
-            let mappedEinthusanId = cache.get(`ttToEinthusan_${einthusan_id}`);
+            let mappedEinthusanId = await cache.get(`ttToEinthusan_${einthusan_id}`);
 
             if (!mappedEinthusanId) {
                 // Fallback to checking the 15-page cache if the direct map isn't found
                 const cacheKeyForMovies = `recent_movies_${lang}_15`;
-                const cachedMovies = cache.get(cacheKeyForMovies);
+                const cachedMovies = await cache.get(cacheKeyForMovies);
 
                 if (cachedMovies) {
                     const movies = decompressData(cachedMovies);
                     const movie = movies.find(m => m.id === einthusan_id);
                     if (movie) {
                         mappedEinthusanId = movie.EinthusanID;
-                        cache.set(`ttToEinthusan_${einthusan_id}`, mappedEinthusanId, 604800);
+                        await cache.set(`ttToEinthusan_${einthusan_id}`, mappedEinthusanId, 604800);
                     }
                 }
             }
@@ -530,7 +578,7 @@ async function stream(einthusan_id, lang) {
 
         console.info(`${useColors ? '\x1b[32m' : ''}Stream Fetched Successfully For:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[36m' : ''}${title}${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[33m' : ''}(${year})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[31m' : ''}(EinthusanID: ${einthusan_id} and imdbID: ${imdb})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[32m' : ''}In Language:${useColors ? '\x1b[0m' : ''} ${capitalizedLang}`);
 
-        cache.set(cacheKey, compressData(result), 3600);
+        await cache.set(cacheKey, compressData(result), 3600);
         return result;
     } catch (err) {
         // Handle specific and general errors
@@ -596,7 +644,7 @@ async function getcatalogresults(url) {
                     }
 
                     const finalId = imdbId || `einthusan_${einthusanId}`;
-                    if (imdbId) cache.set(`ttToEinthusan_${imdbId}`, einthusanId, 604800);
+                    if (imdbId) await cache.set(`ttToEinthusan_${imdbId}`, einthusanId, 604800);
 
                     const description = synopsisElement ? decodeHtmlEntities(synopsisElement.rawText.trim()) : null;
                     const trailer = trailerElement?.rawAttributes['href']?.split("v=")[1] || null;
@@ -660,7 +708,7 @@ async function getEinthusanIdByTitle(title, lang, ttnumber) {
     }
 
     const cacheKey = `einthusan_${normalizeTitle(title)}_${lang}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
     if (cached) return decompressData(cached);
 
     try {
@@ -674,7 +722,7 @@ async function getEinthusanIdByTitle(title, lang, ttnumber) {
         if (ttnumber) {
             const matchByTTNumber = results.find(movie => movie.id === ttnumber);
             if (matchByTTNumber) {
-                cache.set(cacheKey, compressData(matchByTTNumber.EinthusanID));
+                await cache.set(cacheKey, compressData(matchByTTNumber.EinthusanID));
                 return matchByTTNumber.EinthusanID;
             }
         }
@@ -682,7 +730,7 @@ async function getEinthusanIdByTitle(title, lang, ttnumber) {
         const normalizedSearchTitle = normalizeTitle(title);
         const match = results.find(movie => normalizeTitle(movie.name) === normalizedSearchTitle);
         if (match) {
-            cache.set(cacheKey, compressData(match.EinthusanID));
+            await cache.set(cacheKey, compressData(match.EinthusanID));
             return match.EinthusanID;
         }
 
@@ -699,7 +747,8 @@ const pendingFetches = new Map();
 // Optimized function to get all recent movies with parallel processing
 async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch = false) {
     const cacheKey = `recent_movies_${lang}_${maxPages}`;
-    const cached = !forceFetch && cache.get(cacheKey); // Skip cache if forceFetch is true
+    let cached = null;
+    if (!forceFetch) cached = await cache.get(cacheKey); // Skip cache if forceFetch is true
 
     if (cached) {
         if (logSummary) {
@@ -774,7 +823,7 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
                                 }
     
                                 const finalId = imdbId || `einthusan_${einthusanId}`;
-                                if (imdbId) cache.set(`ttToEinthusan_${imdbId}`, einthusanId, 604800);
+                                if (imdbId) await cache.set(`ttToEinthusan_${imdbId}`, einthusanId, 604800);
     
                                 const description = synopsisElement ? decodeHtmlEntities(synopsisElement.rawText.trim()) : null;
                                 const trailer = trailerElement?.rawAttributes['href']?.split("v=")[1] || null;
@@ -859,7 +908,7 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
             console.info(`${useColors ? '\x1b[33m' : ''}Fetched A Total Of ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[32m' : ''}${results.length}${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[33m' : ''} Unique Recent Movies In Language: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[36m' : ''}${capitalizeFirstLetter(lang)}${useColors ? '\x1b[0m' : ''}`);
         }
 
-        cache.set(cacheKey, compressData(results), 604800);
+        await cache.set(cacheKey, compressData(results), 604800);
         return results;
         } catch (err) {
             console.error("Error in getAllRecentMovies:", err.message);
@@ -880,7 +929,7 @@ async function meta(einthusan_id, lang) {
 
         if (einthusan_id.startsWith("tt")) {
             const cacheKeyForMovies = `recent_movies_${lang}_15`;
-            const cachedMovies = cache.get(cacheKeyForMovies);
+            const cachedMovies = await cache.get(cacheKeyForMovies);
 
             if (cachedMovies) {
                 const movies = decompressData(cachedMovies);
@@ -909,7 +958,7 @@ async function meta(einthusan_id, lang) {
             ? `tt_${einthusan_id}`
             : `einthusan_${einthusan_id}`;
         
-        const cachedMeta = cache.get(cacheKey);
+        const cachedMeta = await cache.get(cacheKey);
 
         if (cachedMeta) {
             const updatedMeta = { ...cachedMeta };
@@ -977,7 +1026,7 @@ async function meta(einthusan_id, lang) {
             ]
         };
 
-        cache.set(cacheKey, metaObj);
+        await cache.set(cacheKey, metaObj);
         return metaObj;
     } catch (e) {
         //console.error("Error in meta function:", e.message);
@@ -987,6 +1036,7 @@ async function meta(einthusan_id, lang) {
 
 
 module.exports = {
+    cache,
     search,
     stream,
     getAllRecentMovies,

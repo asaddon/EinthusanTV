@@ -14,6 +14,7 @@
 		"cors": "latest",
 		"dotenv": "latest",
 		"express": "^4.21.1",
+		"ioredis": "^6.0.0",
 		"name-to-imdb": "latest",
 		"node-cache": "latest",
 		"node-html-parser": "latest",

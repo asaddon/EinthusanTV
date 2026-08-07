@@ -219,7 +219,7 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
         let isTempCatalog = false;
 
         if (id === `${configuration}_board`) {
-            metas = cache.get(`recent_movies_${configuration}_15`);
+            metas = await sources.cache.get(`recent_movies_${configuration}_15`);
 
             if (!metas) {
                 metas = await sources.getAllRecentMovies(1, configuration);
