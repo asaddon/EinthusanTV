@@ -898,6 +898,7 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
         for (let i = 1; i <= maxPages; i++) {
             const pageData = await fetchPage(i);
             allPages.push(pageData);
+            console.log(`[${capitalizeFirstLetter(lang)}] Progress: ${i}/${maxPages} pages processed (${pageData.length} movies)`);
             if (i < maxPages) {
                 await sleep(500); // 500ms delay between pages
             }
