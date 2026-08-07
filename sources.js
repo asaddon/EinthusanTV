@@ -18,7 +18,14 @@ class CacheWrapper {
     constructor() {
         this.useRedis = !!process.env.REDIS_URL;
         if (this.useRedis) {
-            this.redis = new Redis(process.env.REDIS_URL);
+            let redisUrl = process.env.REDIS_URL.trim();
+            // Remove accidental quotes that the user might have copy-pasted
+            if (redisUrl.startsWith('"') && redisUrl.endsWith('"')) {
+                redisUrl = redisUrl.slice(1, -1);
+            } else if (redisUrl.startsWith("'") && redisUrl.endsWith("'")) {
+                redisUrl = redisUrl.slice(1, -1);
+            }
+            this.redis = new Redis(redisUrl);
             console.log("Connected to Redis Cache.");
         } else {
             this.localCache = new NodeCache({
