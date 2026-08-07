@@ -45,30 +45,16 @@ const REQUEST_TIMEOUT = 120 * 1000; // 120 seconds
 if (process.env.LOGIN_EMAIL && process.env.LOGIN_PASSWORD) {
     sources.initializeClientWithSession()
         .then(() => {
-            console.log("Login successful. Starting initial fetch.");
-            sources.fetchRecentMoviesForAllLanguages();
-
-            schedule.scheduleJob(FETCH_INTERVAL, () => {
-                sources.fetchRecentMoviesForAllLanguages();
-            });
-
+            console.log("Login successful.");
             schedule.scheduleJob(LOGIN_INTERVAL, () => {
                 sources.initializeClientWithSession();
             });
         })
         .catch((error) => {
             console.error("Login failed:", error.message);
-            sources.fetchRecentMoviesForAllLanguages();
-            schedule.scheduleJob(FETCH_INTERVAL, () => {
-                sources.fetchRecentMoviesForAllLanguages();
-            });
         });
 } else {
-    console.log('No login credentials. Running fetch directly.');
-    sources.fetchRecentMoviesForAllLanguages();
-    schedule.scheduleJob(FETCH_INTERVAL, () => {
-        sources.fetchRecentMoviesForAllLanguages();
-    });
+    console.log('No login credentials provided. Scraping public pages only.');
 }
 
 // Enable CORS and trust proxy
