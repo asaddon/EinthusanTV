@@ -515,8 +515,8 @@ async function ttnumberToTitle(ttNumber, retries = 5) {
     const fetchPromise = (async () => {
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
-                let title = await fetchFromIMDbApi(ttNumber) || 
-                            await fetchFromCinemeta(ttNumber) || 
+                let title = await fetchFromCinemeta(ttNumber) || 
+                            await fetchFromIMDbApi(ttNumber) || 
                             await fetchFromIMDbPage(ttNumber);
                 if (title) return title;
                 throw new Error('No title found on IMDb API, Cinemeta, or IMDb Page');
@@ -673,7 +673,7 @@ async function stream(einthusan_id, lang) {
 
         console.info(`${useColors ? '\x1b[32m' : ''}Stream Fetched Successfully For:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[36m' : ''}${title}${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[33m' : ''}(${year})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[31m' : ''}(EinthusanID: ${einthusan_id} and imdbID: ${imdb})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[32m' : ''}In Language:${useColors ? '\x1b[0m' : ''} ${capitalizedLang}`);
 
-        await cache.set(cacheKey, compressData(result), 3600);
+        await cache.set(cacheKey, compressData(result), 86400);
         return result;
     } catch (err) {
         // Handle specific and general errors
