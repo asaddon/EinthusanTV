@@ -5,9 +5,12 @@ async function main() {
     try {
         console.log("Starting GitHub Actions Scraping Job...");
 
-        // Ensure REDIS_URL is present, otherwise scraping will just go to local memory and die with the action
-        if (!process.env.REDIS_URL) {
-            console.error("FATAL: REDIS_URL is not set. The scraped data will be lost when the action completes.");
+        // Ensure REDIS_URL or Cloudflare KV is present, otherwise scraping will just go to local memory and die with the action
+        const hasRedis = !!process.env.REDIS_URL;
+        const hasCFKV = !!(process.env.CF_ACCOUNT_ID && process.env.CF_KV_NAMESPACE_ID && process.env.CF_API_TOKEN);
+
+        if (!hasRedis && !hasCFKV) {
+            console.error("FATAL: Neither REDIS_URL nor Cloudflare KV environment variables (CF_ACCOUNT_ID, CF_KV_NAMESPACE_ID, CF_API_TOKEN) are set. The scraped data will be lost when the action completes.");
             process.exit(1);
         }
 
