@@ -17,9 +17,17 @@ const Redis = require("ioredis");
 class CacheWrapper {
     constructor() {
         this.useRedis = !!process.env.REDIS_URL;
+        this.useCloudflareKV = !!(process.env.CF_ACCOUNT_ID && process.env.CF_KV_NAMESPACE_ID && process.env.CF_API_TOKEN);
+
+        if (this.useCloudflareKV) {
+            this.cfAccountId = process.env.CF_ACCOUNT_ID.trim();
+            this.cfNamespaceId = process.env.CF_KV_NAMESPACE_ID.trim();
+            this.cfApiToken = process.env.CF_API_TOKEN.trim();
+            console.log("Cloudflare KV Integration Enabled.");
+        }
+
         if (this.useRedis) {
             let redisUrl = process.env.REDIS_URL.trim();
-            // Remove accidental quotes that the user might have copy-pasted
             if (redisUrl.startsWith('"') && redisUrl.endsWith('"')) {
                 redisUrl = redisUrl.slice(1, -1);
             } else if (redisUrl.startsWith("'") && redisUrl.endsWith("'")) {
@@ -27,7 +35,7 @@ class CacheWrapper {
             }
             this.redis = new Redis(redisUrl);
             console.log("Connected to Redis Cache.");
-        } else {
+        } else if (!this.useCloudflareKV) {
             this.localCache = new NodeCache({
                 stdTTL: 30 * 60,
                 checkperiod: 60 * 60,
@@ -39,11 +47,29 @@ class CacheWrapper {
     }
 
     async get(key) {
+        if (this.useCloudflareKV) {
+            try {
+                const url = `https://api.cloudflare.com/client/v4/accounts/${this.cfAccountId}/storage/kv/namespaces/${this.cfNamespaceId}/values/${encodeURIComponent(key)}`;
+                const res = await axios.get(url, {
+                    headers: { 'Authorization': `Bearer ${this.cfApiToken}` },
+                    responseType: 'arraybuffer',
+                    timeout: 5000
+                });
+                if (res.data) {
+                    const buf = Buffer.from(res.data);
+                    if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
+                        return buf;
+                    }
+                    return buf.toString('utf8');
+                }
+            } catch (err) {
+                // Failover to Redis or localCache if KV key is not found or fails
+            }
+        }
         if (this.useRedis) {
             try {
                 const val = await this.redis.getBuffer(key);
                 if (!val) return undefined;
-                // Check if it's a gzipped buffer (starts with 1F 8B)
                 if (val.length >= 2 && val[0] === 0x1f && val[1] === 0x8b) {
                     return val;
                 }
@@ -53,16 +79,32 @@ class CacheWrapper {
                 return undefined;
             }
         }
-        return this.localCache.get(key);
+        return this.localCache ? this.localCache.get(key) : undefined;
     }
 
     async set(key, value, ttlSeconds = 1800) {
+        let valToStore = value;
+        if (!Buffer.isBuffer(value) && typeof value === 'object') {
+            valToStore = JSON.stringify(value);
+        }
+
+        if (this.useCloudflareKV) {
+            try {
+                const url = `https://api.cloudflare.com/client/v4/accounts/${this.cfAccountId}/storage/kv/namespaces/${this.cfNamespaceId}/values/${encodeURIComponent(key)}?expiration_ttl=${Math.max(60, ttlSeconds)}`;
+                await axios.put(url, valToStore, {
+                    headers: {
+                        'Authorization': `Bearer ${this.cfApiToken}`,
+                        'Content-Type': Buffer.isBuffer(valToStore) ? 'application/octet-stream' : 'text/plain'
+                    },
+                    timeout: 5000
+                });
+            } catch (err) {
+                console.error("Cloudflare KV Set Error:", err.message);
+            }
+        }
+
         if (this.useRedis) {
             try {
-                let valToStore = value;
-                if (!Buffer.isBuffer(value) && typeof value === 'object') {
-                    valToStore = JSON.stringify(value);
-                }
                 if (Buffer.isBuffer(valToStore)) {
                     await this.redis.set(key, valToStore, "EX", ttlSeconds);
                 } else {
@@ -71,12 +113,66 @@ class CacheWrapper {
             } catch (err) {
                 console.error("Redis Set Error:", err.message);
             }
-        } else {
+        } else if (!this.useCloudflareKV && this.localCache) {
             this.localCache.set(key, value, ttlSeconds);
         }
     }
 }
 const cache = new CacheWrapper();
+
+// Master Mapping Dictionary Helpers (1 write per language instead of thousands of micro-keys)
+async function getIdMap(lang) {
+    if (!lang) return {};
+    const cacheKey = `id_map_${lang.toLowerCase()}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+        const decompressed = decompressData(cached);
+        if (decompressed && typeof decompressed === 'object') {
+            return decompressed;
+        }
+    }
+    return {};
+}
+
+async function saveIdMap(lang, mapObj) {
+    if (!lang || !mapObj) return;
+    const cacheKey = `id_map_${lang.toLowerCase()}`;
+    await cache.set(cacheKey, compressData(mapObj), 604800);
+}
+
+async function getMappedEinthusanId(imdbId, lang) {
+    if (!imdbId || !lang) return null;
+    const map = await getIdMap(lang);
+    if (map[imdbId]) return map[imdbId];
+
+    // Fallback 1: check direct key
+    const directKey = await cache.get(`ttToEinthusan_${imdbId}`);
+    if (directKey) return directKey;
+
+    // Fallback 2: check 15-page catalog array
+    const cacheKeyForMovies = `recent_movies_${lang.toLowerCase()}_15`;
+    const cachedMovies = await cache.get(cacheKeyForMovies);
+    if (cachedMovies) {
+        const movies = decompressData(cachedMovies);
+        if (Array.isArray(movies)) {
+            const movie = movies.find(m => m.id === imdbId);
+            if (movie && movie.EinthusanID) {
+                map[imdbId] = movie.EinthusanID;
+                await saveIdMap(lang, map);
+                return movie.EinthusanID;
+            }
+        }
+    }
+    return null;
+}
+
+async function saveMappedEinthusanId(imdbId, einthusanId, lang) {
+    if (!imdbId || !einthusanId || !lang) return;
+    const map = await getIdMap(lang);
+    map[imdbId] = einthusanId;
+    await saveIdMap(lang, map);
+}
+
 // Function to fetch recent movies for all languages
 let isFirstRun = true;
 const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
@@ -518,22 +614,7 @@ async function stream(einthusan_id, lang) {
         let validEinthusanId = false;
 
         if (einthusan_id.startsWith("tt")) {
-            let mappedEinthusanId = await cache.get(`ttToEinthusan_${einthusan_id}`);
-
-            if (!mappedEinthusanId) {
-                // Fallback to checking the 15-page cache if the direct map isn't found
-                const cacheKeyForMovies = `recent_movies_${lang}_15`;
-                const cachedMovies = await cache.get(cacheKeyForMovies);
-
-                if (cachedMovies) {
-                    const movies = decompressData(cachedMovies);
-                    const movie = movies.find(m => m.id === einthusan_id);
-                    if (movie) {
-                        mappedEinthusanId = movie.EinthusanID;
-                        await cache.set(`ttToEinthusan_${einthusan_id}`, mappedEinthusanId, 604800);
-                    }
-                }
-            }
+            let mappedEinthusanId = await getMappedEinthusanId(einthusan_id, lang);
 
             if (mappedEinthusanId) {
                 einthusan_id = mappedEinthusanId;
@@ -545,7 +626,7 @@ async function stream(einthusan_id, lang) {
                 // Handle getEinthusanIdByTitle promise locally
                 const resolvedId = await getEinthusanIdByTitle(imdbTitle, lang, einthusan_id).catch(() => null);
                 if (resolvedId) {
-                    await cache.set(`ttToEinthusan_${einthusan_id}`, resolvedId, 604800);
+                    await saveMappedEinthusanId(einthusan_id, resolvedId, lang);
                     einthusan_id = resolvedId;
                 } else {
                     throw new Error(`Einthusan ID could not be retrieved for Title: ${imdbTitle} in Language: ${capitalizeFirstLetter(lang)}`);
@@ -837,7 +918,6 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
                                 }
     
                                 const finalId = imdbId || `einthusan_${einthusanId}`;
-                                if (imdbId) await cache.set(`ttToEinthusan_${imdbId}`, einthusanId, 604800);
     
                                 const description = synopsisElement ? decodeHtmlEntities(synopsisElement.rawText.trim()) : null;
                                 const trailer = trailerElement?.rawAttributes['href']?.split("v=")[1] || null;
@@ -919,6 +999,26 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
         });
 
         const results = Array.from(uniqueMovies.values());
+
+        // Batch update Master Mapping Dictionary for this language (1 WRITE operation total!)
+        try {
+            const idMap = await getIdMap(lang);
+            let updatedMap = false;
+            for (const movie of results) {
+                if (movie.id && movie.id.startsWith("tt") && movie.EinthusanID) {
+                    if (!idMap[movie.id]) {
+                        idMap[movie.id] = movie.EinthusanID;
+                        updatedMap = true;
+                    }
+                }
+            }
+            if (updatedMap) {
+                await saveIdMap(lang, idMap);
+            }
+        } catch (e) {
+            console.error(`Error saving Master ID Map for ${lang}:`, e.message);
+        }
+
         if (logSummary) {
             console.info(`${useColors ? '\x1b[33m' : ''}Fetched A Total Of ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[32m' : ''}${results.length}${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[33m' : ''} Unique Recent Movies In Language: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[36m' : ''}${capitalizeFirstLetter(lang)}${useColors ? '\x1b[0m' : ''}`);
         }
@@ -943,25 +1043,18 @@ async function meta(einthusan_id, lang) {
         let mappedEinthusanId;
 
         if (einthusan_id.startsWith("tt")) {
-            const cacheKeyForMovies = `recent_movies_${lang}_15`;
-            const cachedMovies = await cache.get(cacheKeyForMovies);
-
-            if (cachedMovies) {
-                const movies = decompressData(cachedMovies);
-                const movie = movies.find(m => m.id === einthusan_id);
-                if (movie) {
-                    mappedEinthusanId = movie.EinthusanID;
-                }
-            }
+            let mappedEinthusanId = await getMappedEinthusanId(einthusan_id, lang);
 
             if (mappedEinthusanId) {
                 einthusan_id = mappedEinthusanId;
             } else {
                 const imdbTitle = await ttnumberToTitle(einthusan_id).catch(() => null);
                 if (!imdbTitle) return;
-                einthusan_id = await getEinthusanIdByTitle(imdbTitle, lang, einthusan_id).catch(() => null);
-                if (!einthusan_id) return;
-                if (typeof einthusan_id === 'undefined') {
+                const resolvedId = await getEinthusanIdByTitle(imdbTitle, lang, einthusan_id).catch(() => null);
+                if (resolvedId) {
+                    await saveMappedEinthusanId(einthusan_id, resolvedId, lang);
+                    einthusan_id = resolvedId;
+                } else {
                     throw new Error(`Einthusan ID could not be retrieved for Title: ${imdbTitle} in Language: ${capitalizeFirstLetter(lang)}`);
                 }
             }
