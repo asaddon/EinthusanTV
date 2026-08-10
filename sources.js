@@ -247,8 +247,8 @@ const interval = 10 * 60 * 1000; // 10 minutes in milliseconds
 const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Karachi', timeZoneName: 'long' };
 
 setInterval(async () => {
+    const date = new Date();
     try {
-      const date = new Date();
       const res = await axios.get(renderUrl);
       console.info(`Reloaded at ${date.toLocaleString('en-US', options)}: Status ${res.status}`);
     } catch (err) {
