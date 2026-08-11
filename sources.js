@@ -19,11 +19,19 @@ class CacheWrapper {
         this.useRedis = !!process.env.REDIS_URL;
         this.useCloudflareKV = !!(process.env.CF_ACCOUNT_ID && process.env.CF_KV_NAMESPACE_ID && process.env.CF_API_TOKEN);
 
+        // Always maintain local memory L1 cache to prevent excessive L2 (Redis/KV) requests
+        this.localCache = new NodeCache({
+            stdTTL: 15 * 60, // 15 minutes in memory
+            checkperiod: 30 * 60,
+            useClones: false,
+            maxKeys: 5000
+        });
+
         if (this.useCloudflareKV) {
             this.cfAccountId = process.env.CF_ACCOUNT_ID.trim();
             this.cfNamespaceId = process.env.CF_KV_NAMESPACE_ID.trim();
             this.cfApiToken = process.env.CF_API_TOKEN.trim();
-            console.log("Cloudflare KV Integration Enabled.");
+            console.log("Cloudflare KV Integration Enabled (with L1 local cache).");
         }
 
         if (this.useRedis) {
@@ -34,60 +42,64 @@ class CacheWrapper {
                 redisUrl = redisUrl.slice(1, -1);
             }
             this.redis = new Redis(redisUrl);
-            console.log("Connected to Redis Cache.");
-        } else if (!this.useCloudflareKV) {
-            this.localCache = new NodeCache({
-                stdTTL: 30 * 60,
-                checkperiod: 60 * 60,
-                useClones: false,
-                maxKeys: 10000
-            });
-            console.log("Using Local NodeCache.");
+            console.log("Connected to Redis Cache (with L1 local cache).");
         }
     }
 
     async get(key) {
+        // 1. Check L1 Memory Cache first (0ms, 0 network calls)
+        const localVal = this.localCache.get(key);
+        if (localVal !== undefined) {
+            return localVal;
+        }
+
+        // 2. Check L2 Cloudflare KV
         if (this.useCloudflareKV) {
             try {
                 const url = `https://api.cloudflare.com/client/v4/accounts/${this.cfAccountId}/storage/kv/namespaces/${this.cfNamespaceId}/values/${encodeURIComponent(key)}`;
                 const res = await axios.get(url, {
                     headers: { 'Authorization': `Bearer ${this.cfApiToken}` },
                     responseType: 'arraybuffer',
-                    timeout: 5000
+                    timeout: 4000
                 });
                 if (res.data) {
                     const buf = Buffer.from(res.data);
-                    if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
-                        return buf;
-                    }
-                    return buf.toString('utf8');
+                    const val = (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) ? buf : buf.toString('utf8');
+                    this.localCache.set(key, val, 900); // Store in L1 RAM for 15 mins
+                    return val;
                 }
             } catch (err) {
-                // Failover to Redis or localCache if KV key is not found or fails
+                // Key not in KV or rate limited
             }
         }
+
+        // 3. Check L2 Redis
         if (this.useRedis) {
             try {
                 const val = await this.redis.getBuffer(key);
-                if (!val) return undefined;
-                if (val.length >= 2 && val[0] === 0x1f && val[1] === 0x8b) {
-                    return val;
+                if (val) {
+                    const resVal = (val.length >= 2 && val[0] === 0x1f && val[1] === 0x8b) ? val : val.toString('utf8');
+                    this.localCache.set(key, resVal, 900); // Store in L1 RAM for 15 mins
+                    return resVal;
                 }
-                return val.toString('utf8');
             } catch (err) {
                 console.error("Redis Get Error:", err.message);
-                return undefined;
             }
         }
-        return this.localCache ? this.localCache.get(key) : undefined;
+
+        return undefined;
     }
 
     async set(key, value, ttlSeconds = 1800) {
+        // 1. Save to L1 Memory Cache immediately
+        this.localCache.set(key, value, Math.min(ttlSeconds, 900));
+
         let valToStore = value;
         if (!Buffer.isBuffer(value) && typeof value === 'object') {
             valToStore = JSON.stringify(value);
         }
 
+        // 2. Save to L2 Cloudflare KV
         if (this.useCloudflareKV) {
             try {
                 const url = `https://api.cloudflare.com/client/v4/accounts/${this.cfAccountId}/storage/kv/namespaces/${this.cfNamespaceId}/values/${encodeURIComponent(key)}?expiration_ttl=${Math.max(60, ttlSeconds)}`;
@@ -99,10 +111,11 @@ class CacheWrapper {
                     timeout: 5000
                 });
             } catch (err) {
-                console.error("Cloudflare KV Set Error:", err.message);
+                // Ignore 429 or network errors gracefully so app keeps functioning via L1
             }
         }
 
+        // 3. Save to L2 Redis
         if (this.useRedis) {
             try {
                 if (Buffer.isBuffer(valToStore)) {
@@ -113,8 +126,6 @@ class CacheWrapper {
             } catch (err) {
                 console.error("Redis Set Error:", err.message);
             }
-        } else if (!this.useCloudflareKV && this.localCache) {
-            this.localCache.set(key, value, ttlSeconds);
         }
     }
 }
@@ -739,7 +750,6 @@ async function getcatalogresults(url) {
                     }
 
                     const finalId = imdbId || `einthusan_${einthusanId}`;
-                    if (imdbId) await cache.set(`ttToEinthusan_${imdbId}`, einthusanId, 604800);
 
                     const description = synopsisElement ? decodeHtmlEntities(synopsisElement.rawText.trim()) : null;
                     const trailer = trailerElement?.rawAttributes['href']?.split("v=")[1] || null;
