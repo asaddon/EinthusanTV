@@ -684,7 +684,7 @@ async function stream(einthusan_id, lang) {
 
         console.info(`${useColors ? '\x1b[32m' : ''}Stream Fetched Successfully For:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[36m' : ''}${title}${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[33m' : ''}(${year})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[31m' : ''}(EinthusanID: ${einthusan_id} and imdbID: ${imdb})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[32m' : ''}In Language:${useColors ? '\x1b[0m' : ''} ${capitalizedLang}`);
 
-        await cache.set(cacheKey, compressData(result), 86400);
+        await cache.set(cacheKey, compressData(result), 7200);
         return result;
     } catch (err) {
         // Handle specific and general errors
