@@ -493,7 +493,7 @@ async function getImdbId(title, year) {
     }
 
     try {
-        const result = await getImdbIdAsync({ name: cleanedTitle, year: year }).catch((err) => {
+        const result = await getImdbIdAsync({ name: cleanedTitle, year: year, type: 'movie' }).catch((err) => {
             console.error(`Error Fetching IMDb ID For "${cleanedTitle}":`, err.message);
             return null;
         });
@@ -558,8 +558,14 @@ async function fetchFromIMDbApi(ttNumber) {
     const imdbApiUrl = `https://v2.sg.media-imdb.com/suggestion/t/${ttNumber}.json`;
     try {
         const imdbResponse = await axios.get(imdbApiUrl, { timeout: 10000 });
-        const movie = imdbResponse.data.d.find(item => item.id === ttNumber);
-        return movie?.l || null;
+        const media = imdbResponse.data.d.find(item => item.id === ttNumber);
+        
+        // Reject if it is a TV series
+        if (media && media.q && media.q.toLowerCase().includes('tv series')) {
+            return null;
+        }
+        
+        return media?.l || null;
     } catch (err) {
         //console.warn(`IMDb API failed: ${err.message}`);
         return null;
@@ -586,6 +592,12 @@ async function fetchFromIMDbPage(ttNumber) {
         });
         const $ = cheerio.load(imdbPageResponse.data);
         const imdbTitle = $('title').text();
+        
+        // Reject if it is a TV series
+        if (imdbTitle && (imdbTitle.includes('TV Series') || imdbTitle.includes('TV Mini'))) {
+            return null;
+        }
+
         return imdbTitle ? imdbTitle.replace(/ \(.*\)/, '').split('IMDb')[0].trim() : null;
     } catch (err) {
         //console.warn(`IMDb Page Scraping failed: ${err.message}`);
