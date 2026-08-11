@@ -21,10 +21,10 @@ class CacheWrapper {
 
         // Always maintain local memory L1 cache to prevent excessive L2 (Redis/KV) requests
         this.localCache = new NodeCache({
-            stdTTL: 15 * 60, // 15 minutes in memory
-            checkperiod: 30 * 60,
+            stdTTL: 5 * 60, // 5 minutes in memory to prevent RAM bloat
+            checkperiod: 60, // Check for expired keys every 60 seconds
             useClones: false,
-            maxKeys: 5000
+            maxKeys: 500 // Aggressive cap on memory usage
         });
 
         if (this.useCloudflareKV) {
