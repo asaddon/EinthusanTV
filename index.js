@@ -191,6 +191,21 @@ app.get('/:rpdbKey?/:configuration/manifest.json', (req, res) => {
     }
 });
 
+// Fast-fail for TV Series requests (Einthusan is movies only)
+app.get('/:rpdbKey?/:configuration/stream/series/:id/:extra?.json', (req, res) => {
+    setCommonHeaders(res);
+    return res.json({ streams: [] });
+});
+
+app.get('/:rpdbKey?/:configuration/meta/series/:id/:extra?.json', (req, res) => {
+    setCommonHeaders(res);
+    return res.json({ meta: {} });
+});
+
+app.get('/:rpdbKey?/:configuration/catalog/series/:id/:extra?.json', (req, res) => {
+    setCommonHeaders(res);
+    return res.json({ metas: [] });
+});
 // Handle catalog requests
 app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, res) => {
     try {
@@ -290,5 +305,6 @@ app.get('/:rpdbKey?/:configuration/meta/movie/:id/:extra?.json', async (req, res
         }
     }
 });
+
 
 module.exports = app;
