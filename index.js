@@ -9,7 +9,16 @@ const schedule = require('node-schedule');
 require('dotenv').config();
 
 const app = express();
+
+// Real-time Dashboard (Available at /status)
+const statusMonitor = require('express-status-monitor');
+app.use(statusMonitor());
+
 app.use(compression());
+
+// Detailed HTTP Request Logger (IP, Method, URL, Status, Response Time, User-Agent)
+const morgan = require('morgan');
+app.use(morgan(':remote-addr - :method :url :status :res[content-length] - :response-time ms - :user-agent'));
 
 // Prevent multiple responses middleware
 app.use((req, res, next) => {
