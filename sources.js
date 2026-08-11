@@ -808,26 +808,25 @@ async function getcatalogresults(url) {
 // Optimized function to get Einthusan ID by title
 async function getEinthusanIdByTitle(title, lang, ttnumber) {
     if (!title || !lang) {
-        //console.error("Error: Missing 'title' or 'lang' parameter.");
         return null;
     }
 
-    const cacheKey = `einthusan_${normalizeTitle(title)}_${lang}`;
-    const cached = await cache.get(cacheKey);
-    if (cached) return decompressData(cached);
+    if (ttnumber) {
+        const existing = await getMappedEinthusanId(ttnumber, lang);
+        if (existing) return existing;
+    }
 
     try {
         const url = `/movie/results/?lang=${lang}&query=${encodeURIComponent(title)}`;
         const results = await getcatalogresults(url);
         if (!Array.isArray(results) || results.length === 0) {
-            //console.warn(`No results found for "${title}" in language "${lang}".`);
             return null;
         }
 
         if (ttnumber) {
             const matchByTTNumber = results.find(movie => movie.id === ttnumber);
             if (matchByTTNumber) {
-                await cache.set(cacheKey, compressData(matchByTTNumber.EinthusanID));
+                await saveMappedEinthusanId(ttnumber, matchByTTNumber.EinthusanID, lang);
                 return matchByTTNumber.EinthusanID;
             }
         }
@@ -835,11 +834,10 @@ async function getEinthusanIdByTitle(title, lang, ttnumber) {
         const normalizedSearchTitle = normalizeTitle(title);
         const match = results.find(movie => normalizeTitle(movie.name) === normalizedSearchTitle);
         if (match) {
-            await cache.set(cacheKey, compressData(match.EinthusanID));
+            if (ttnumber) await saveMappedEinthusanId(ttnumber, match.EinthusanID, lang);
             return match.EinthusanID;
         }
 
-        //console.warn(`No exact match found for "${title}" in language "${lang}".`);
         return null;
     } catch (err) {
         console.error(`Error in getEinthusanIdByTitle: ${err.message}`);
