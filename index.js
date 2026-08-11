@@ -16,10 +16,6 @@ app.use(statusMonitor());
 
 app.use(compression());
 
-// Detailed HTTP Request Logger (IP, Method, URL, Status, Response Time, User-Agent)
-const morgan = require('morgan');
-app.use(morgan(':remote-addr - :method :url :status :res[content-length] - :response-time ms - :user-agent'));
-
 // Prevent multiple responses middleware
 app.use((req, res, next) => {
     const originalSend = res.send;
