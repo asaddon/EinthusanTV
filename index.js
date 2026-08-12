@@ -231,10 +231,11 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
         let isTempCatalog = false;
 
         if (id === `${configuration}_board`) {
-            metas = await sources.cache.get(`recent_movies_${configuration}_15`);
-            if (metas) metas = sources.decompressData(metas);
+            metas = await sources.getCachedCatalog(configuration, 15);
 
             if (!metas) {
+                // If the 15-page catalog is missing (e.g. KV rate limited and no scrape has finished),
+                // fall back to a rapid 1-page scrape just to keep the Stremio UI from timing out.
                 metas = await sources.getAllRecentMovies(1, configuration);
                 isTempCatalog = true;
             }

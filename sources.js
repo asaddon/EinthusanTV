@@ -152,6 +152,23 @@ function getCatalogFromStore(lang, maxPages) {
     return _catalogStore[`${lang}_${maxPages}`] || null;
 }
 
+async function getCachedCatalog(lang, maxPages) {
+    // 1. Check permanent RAM first
+    const storeHit = getCatalogFromStore(lang, maxPages);
+    if (storeHit) return storeHit;
+
+    // 2. Check NodeCache/KV
+    const cacheKey = `recent_movies_${lang}_${maxPages}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+        const movies = decompressData(cached);
+        saveCatalogToStore(lang, maxPages, movies); // Promote to permanent RAM
+        return movies;
+    }
+    
+    return null;
+}
+
 function saveCatalogToStore(lang, maxPages, movies) {
     _catalogStore[`${lang}_${maxPages}`] = movies;
     console.info(`Catalog for ${capitalizeFirstLetter(lang)} (${maxPages} pages, ${movies.length} movies) loaded into permanent RAM.`);
@@ -1244,5 +1261,6 @@ module.exports = {
     meta,
     initializeClientWithSession,
     decompressData,
-    preloadFromKV
+    preloadFromKV,
+    getCachedCatalog
 };
