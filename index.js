@@ -238,6 +238,12 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
                 // fall back to a rapid 1-page scrape just to keep the Stremio UI from timing out.
                 metas = await sources.getAllRecentMovies(1, configuration);
                 isTempCatalog = true;
+                
+                // Fire off the full 15-page fetch in the background so the next request gets the full catalog!
+                setImmediate(() => {
+                    console.info(`Triggering background 15-page fetch for ${configuration} after temporary 1-page serve.`);
+                    sources.getAllRecentMovies(15, configuration, false, false).catch(e => console.error(e));
+                });
             }
         }
 
