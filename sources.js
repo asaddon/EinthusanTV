@@ -21,10 +21,10 @@ class CacheWrapper {
 
         // Always maintain local memory L1 cache to prevent excessive L2 (Redis/KV) requests
         this.localCache = new NodeCache({
-            stdTTL: 5 * 60, // 5 minutes in memory to prevent RAM bloat
+            stdTTL: 10 * 60, // 10 minutes in memory
             checkperiod: 60, // Check for expired keys every 60 seconds
             useClones: false,
-            maxKeys: 500 // Aggressive cap on memory usage
+            maxKeys: 2000 // Must be large enough to hold all active keys in L1
         });
 
         if (this.useCloudflareKV) {
@@ -46,12 +46,15 @@ class CacheWrapper {
         }
     }
 
-    async get(key) {
+    async get(key, l1Only = false) {
         // 1. Check L1 Memory Cache first (0ms, 0 network calls)
         const localVal = this.localCache.get(key);
         if (localVal !== undefined) {
             return localVal;
         }
+
+        // If l1Only, never go to KV/Redis — just return undefined
+        if (l1Only) return undefined;
 
         // 2. Check L2 Cloudflare KV
         if (this.useCloudflareKV) {
@@ -65,7 +68,7 @@ class CacheWrapper {
                 if (res.data) {
                     const buf = Buffer.from(res.data);
                     const val = (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) ? buf : buf.toString('utf8');
-                    this.localCache.set(key, val, 900); // Store in L1 RAM for 15 mins
+                    this.localCache.set(key, val, 600); // Store in L1 RAM for 10 mins
                     return val;
                 }
             } catch (err) {
@@ -79,7 +82,7 @@ class CacheWrapper {
                 const val = await this.redis.getBuffer(key);
                 if (val) {
                     const resVal = (val.length >= 2 && val[0] === 0x1f && val[1] === 0x8b) ? val : val.toString('utf8');
-                    this.localCache.set(key, resVal, 900); // Store in L1 RAM for 15 mins
+                    this.localCache.set(key, resVal, 600); // Store in L1 RAM for 10 mins
                     return resVal;
                 }
             } catch (err) {
@@ -90,9 +93,12 @@ class CacheWrapper {
         return undefined;
     }
 
-    async set(key, value, ttlSeconds = 1800) {
+    async set(key, value, ttlSeconds = 1800, l1Only = false) {
         // 1. Save to L1 Memory Cache immediately
-        this.localCache.set(key, value, Math.min(ttlSeconds, 900));
+        this.localCache.set(key, value, Math.min(ttlSeconds, 600));
+
+        // If l1Only, don't persist to KV/Redis — saves KV quota for important keys
+        if (l1Only) return;
 
         let valToStore = value;
         if (!Buffer.isBuffer(value) && typeof value === 'object') {
@@ -131,57 +137,102 @@ class CacheWrapper {
 }
 const cache = new CacheWrapper();
 
-// Master Mapping Dictionary Helpers (1 write per language instead of thousands of micro-keys)
-async function getIdMap(lang) {
-    if (!lang) return {};
-    const cacheKey = `id_map_${lang.toLowerCase()}`;
-    const cached = await cache.get(cacheKey);
-    if (cached) {
-        const decompressed = decompressData(cached);
-        if (decompressed && typeof decompressed === 'object') {
-            return decompressed;
+// ==========================================
+// In-process Catalog Store (pure RAM, never evicted)
+// ==========================================
+// Holds the 8 language catalog arrays permanently in RAM.
+// KV is only read ONCE at startup per language, written every 6h scrape.
+const _catalogStore = {}; // e.g. { hindi: [...movies] }
+
+function getCatalogFromStore(lang, maxPages) {
+    return _catalogStore[`${lang}_${maxPages}`] || null;
+}
+
+function saveCatalogToStore(lang, maxPages, movies) {
+    _catalogStore[`${lang}_${maxPages}`] = movies;
+    console.info(`Catalog for ${capitalizeFirstLetter(lang)} (${maxPages} pages, ${movies.length} movies) loaded into permanent RAM.`);
+}
+
+// Preload all catalogs and id_maps from KV into permanent RAM at startup (16 KV GETs total, never again)
+async function preloadFromKV() {
+    const langs = require('./config').langs;
+    for (const lang of langs) {
+        try {
+            // Load catalog
+            const cacheKey = `recent_movies_${lang}_15`;
+            const cached = await cache.get(cacheKey);
+            if (cached) {
+                const movies = decompressData(cached);
+                if (Array.isArray(movies) && movies.length > 0) {
+                    saveCatalogToStore(lang, 15, movies);
+                }
+            }
+            // Load id_map (getIdMap already populates _idMapStore on first call)
+            await getIdMap(lang);
+        } catch (e) {
+            console.error(`Failed to preload ${lang} from KV:`, e.message);
         }
     }
-    return {};
+    console.info('Startup preload from KV complete.');
+}
+
+async function getIdMap(lang) {
+    if (!lang) return {};
+    const key = lang.toLowerCase();
+    // If already loaded into RAM, return immediately (0 network calls)
+    if (_idMapStore[key]) return _idMapStore[key];
+
+    // First time: load from KV and keep in RAM forever
+    const cacheKey = `id_map_${key}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+        try {
+            const decompressed = decompressData(cached);
+            if (decompressed && typeof decompressed === 'object') {
+                _idMapStore[key] = decompressed;
+                return _idMapStore[key];
+            }
+        } catch (e) { /* ignore decompression errors */ }
+    }
+    _idMapStore[key] = {};
+    return _idMapStore[key];
 }
 
 async function saveIdMap(lang, mapObj) {
     if (!lang || !mapObj) return;
-    const cacheKey = `id_map_${lang.toLowerCase()}`;
-    await cache.set(cacheKey, compressData(mapObj), 604800);
+    const key = lang.toLowerCase();
+    _idMapStore[key] = mapObj;
+    _idMapDirty[key] = true;
 }
+
+// Flush dirty id_maps to KV every 5 minutes (batched writes instead of per-request writes)
+setInterval(async () => {
+    for (const lang of Object.keys(_idMapDirty)) {
+        if (_idMapDirty[lang] && _idMapStore[lang]) {
+            try {
+                const cacheKey = `id_map_${lang}`;
+                await cache.set(cacheKey, compressData(_idMapStore[lang]), 604800);
+                delete _idMapDirty[lang];
+            } catch (e) { /* ignore */ }
+        }
+    }
+}, 5 * 60 * 1000);
 
 async function getMappedEinthusanId(imdbId, lang) {
     if (!imdbId || !lang) return null;
+    // Pure RAM lookup — no KV reads at all after first load
     const map = await getIdMap(lang);
-    if (map[imdbId]) return map[imdbId];
-
-    // Fallback 1: check direct key
-    const directKey = await cache.get(`ttToEinthusan_${imdbId}`);
-    if (directKey) return directKey;
-
-    // Fallback 2: check 15-page catalog array
-    const cacheKeyForMovies = `recent_movies_${lang.toLowerCase()}_15`;
-    const cachedMovies = await cache.get(cacheKeyForMovies);
-    if (cachedMovies) {
-        const movies = decompressData(cachedMovies);
-        if (Array.isArray(movies)) {
-            const movie = movies.find(m => m.id === imdbId);
-            if (movie && movie.EinthusanID) {
-                map[imdbId] = movie.EinthusanID;
-                await saveIdMap(lang, map);
-                return movie.EinthusanID;
-            }
-        }
-    }
-    return null;
+    return map[imdbId] || null;
 }
 
 async function saveMappedEinthusanId(imdbId, einthusanId, lang) {
     if (!imdbId || !einthusanId || !lang) return;
+    // Update RAM immediately, KV will be flushed by the interval
     const map = await getIdMap(lang);
-    map[imdbId] = einthusanId;
-    await saveIdMap(lang, map);
+    if (map[imdbId] !== einthusanId) {
+        map[imdbId] = einthusanId;
+        _idMapDirty[lang.toLowerCase()] = true;
+    }
 }
 
 // Function to fetch recent movies for all languages
@@ -220,8 +271,8 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
         } else {
             try {
                 results[lang] = await getAllRecentMovies(maxPages, lang, false);
-                await cache.set(cacheKey, compressData(results[lang]), 604800);
-                newMoviesAdded = true; // Mark that new movies were added (since cache was empty)
+                // getAllRecentMovies already calls cache.set internally — no duplicate write needed
+                newMoviesAdded = true;
             } catch (error) {
                 console.error(`Error fetching movies for language ${lang}:`, error);
                 results[lang] = [];
@@ -499,9 +550,8 @@ async function getImdbId(title, year) {
         });
 
         if (result) {
-            //console.log(`Fetched IMDb ID: ${result} For Title: "${cleanedTitle}"${year ? ` (${year})` : ''}`);
-            await cache.set(cacheKey, compressData(result));
-            return result;  // Return the result immediately after caching
+            await cache.set(cacheKey, compressData(result), 1800, true); // L1 only — no KV writes for IMDb lookups
+            return result;
         }
         //console.warn(`${useColors ? '\x1b[33m' : ''}IMDB ID Not Found For Cleaned Title: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[36m' : ''}"${cleanedTitle}"${useColors ? '\x1b[0m' : ''}${cleanedTitle !== title ? `${useColors ? '\x1b[33m' : ''} Original Title: ${useColors ? '\x1b[36m' : ''}"${title}"${useColors ? '\x1b[0m' : ''}` : ''}${year ? ` ${useColors ? '\x1b[33m' : ''}(${year})${useColors ? '\x1b[0m' : ''}` : ''}`);
         return null;
@@ -696,7 +746,7 @@ async function stream(einthusan_id, lang) {
 
         console.info(`${useColors ? '\x1b[32m' : ''}Stream Fetched Successfully For:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[36m' : ''}${title}${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[33m' : ''}(${year})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[31m' : ''}(EinthusanID: ${einthusan_id} and imdbID: ${imdb})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[32m' : ''}In Language:${useColors ? '\x1b[0m' : ''} ${capitalizedLang}`);
 
-        await cache.set(cacheKey, compressData(result), 7200);
+        await cache.set(cacheKey, compressData(result), 7200, true); // L1 only — stream links expire in 2h anyway, no KV writes
         return result;
     } catch (err) {
         // Handle specific and general errors
@@ -862,14 +912,27 @@ const pendingFetches = new Map();
 // Optimized function to get all recent movies with parallel processing
 async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch = false) {
     const cacheKey = `recent_movies_${lang}_${maxPages}`;
+
+    // 1. Check permanent in-process catalog store (zero KV reads, zero network calls)
+    if (!forceFetch) {
+        const storeHit = getCatalogFromStore(lang, maxPages);
+        if (storeHit) {
+            if (logSummary) console.log(`Catalog RAM Hit: ${capitalizeFirstLetter(lang)}, Pages: ${maxPages}`);
+            return storeHit;
+        }
+    }
+
+    // 2. Fall back to KV/NodeCache (only on first load after startup if preload missed it)
     let cached = null;
-    if (!forceFetch) cached = await cache.get(cacheKey); // Skip cache if forceFetch is true
+    if (!forceFetch) cached = await cache.get(cacheKey);
 
     if (cached) {
         if (logSummary) {
             console.log(`${useColors ? '\x1b[32m' : ''}Cache Hit For Recent Movies:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[36m' : ''}${capitalizeFirstLetter(lang)}${useColors ? '\x1b[0m' : ''}, ${useColors ? '\x1b[33m' : ''}Max Pages:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[32m' : ''}${maxPages}${useColors ? '\x1b[0m' : ''}`);
         }
-        return decompressData(cached);
+        const movies = decompressData(cached);
+        saveCatalogToStore(lang, maxPages, movies); // promote to permanent RAM
+        return movies;
     }
 
     if (!forceFetch && pendingFetches.has(cacheKey)) {
@@ -905,6 +968,7 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
                 if (searchResults.length === 0) {
                     console.warn(`No movie results found on page ${page}.`);
                 }
+
 
                 const movies = [];
                 const chunkSize = 2;
@@ -1043,6 +1107,7 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
             console.info(`${useColors ? '\x1b[33m' : ''}Fetched A Total Of ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[32m' : ''}${results.length}${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[33m' : ''} Unique Recent Movies In Language: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[36m' : ''}${capitalizeFirstLetter(lang)}${useColors ? '\x1b[0m' : ''}`);
         }
 
+        saveCatalogToStore(lang, maxPages, results); // save to permanent RAM
         await cache.set(cacheKey, compressData(results), 604800);
         return results;
         } catch (err) {
@@ -1157,7 +1222,7 @@ async function meta(einthusan_id, lang) {
             ]
         };
 
-        await cache.set(cacheKey, compressData(metaObj));
+        await cache.set(cacheKey, compressData(metaObj), 3600, true); // L1 only — meta is re-fetchable, no KV writes
         return metaObj;
     } catch (e) {
         //console.error("Error in meta function:", e.message);
@@ -1174,5 +1239,6 @@ module.exports = {
     fetchRecentMoviesForAllLanguages,
     meta,
     initializeClientWithSession,
-    decompressData
+    decompressData,
+    preloadFromKV
 };

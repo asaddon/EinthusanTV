@@ -62,6 +62,12 @@ if (process.env.LOGIN_EMAIL && process.env.LOGIN_PASSWORD) {
     console.log('No login credentials provided. Scraping public pages only.');
 }
 
+// Preload all catalogs and id_maps from KV into permanent RAM at startup
+// This costs exactly 16 KV GETs once, then zero KV reads for the rest of the server's lifetime
+setImmediate(() => {
+    sources.preloadFromKV().catch(e => console.error('Startup KV preload failed:', e.message));
+});
+
 // Enable CORS and trust proxy
 app.use(cors());
 app.set('trust proxy', true);

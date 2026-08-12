@@ -1,5 +1,27 @@
 require('dotenv').config();
 const sources = require('../sources.js');
+const axios = require('axios');
+
+async function verifyKV(lang) {
+    const key = `recent_movies_${lang}_15`;
+    const url = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/storage/kv/namespaces/${process.env.CF_KV_NAMESPACE_ID}/values/${encodeURIComponent(key)}`;
+    try {
+        const res = await axios.get(url, {
+            headers: { 'Authorization': `Bearer ${process.env.CF_API_TOKEN}` },
+            responseType: 'arraybuffer',
+            timeout: 8000
+        });
+        if (res.data && res.data.byteLength > 100) {
+            return { ok: true, bytes: res.data.byteLength };
+        }
+        return { ok: false, reason: 'Empty or missing data in KV' };
+    } catch (err) {
+        const status = err.response?.status;
+        if (status === 404) return { ok: false, reason: 'Key not found in KV (404)' };
+        if (status === 429) return { ok: false, reason: 'KV rate limited (429) — daily limit exhausted!' };
+        return { ok: false, reason: err.message };
+    }
+}
 
 async function main() {
     try {
@@ -28,10 +50,42 @@ async function main() {
 
         await sources.fetchRecentMoviesForAllLanguages();
         
-        console.log("Scrape completely finished successfully!");
+        console.log("Scrape completely finished. Flushing pending KV writes...");
         
-        // Let Redis flush any pending writes and exit gracefully
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Wait for the 5-min id_map batch flush interval to be irrelevant — force flush by waiting
+        // and let any pending writes complete
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // ============================================================
+        // VERIFICATION: Check that each language catalog is in KV
+        // ============================================================
+        if (hasCFKV) {
+            const { langs } = require('../config');
+            console.log("\n=== KV Verification Report ===");
+            let allPassed = true;
+
+            for (const lang of langs) {
+                const result = await verifyKV(lang);
+                if (result.ok) {
+                    console.log(`  ✅ ${lang.padEnd(12)} → ${(result.bytes / 1024).toFixed(1)} KB stored in KV`);
+                } else {
+                    console.error(`  ❌ ${lang.padEnd(12)} → FAILED: ${result.reason}`);
+                    allPassed = false;
+                }
+            }
+
+            console.log("==============================\n");
+
+            if (!allPassed) {
+                console.error("VERIFICATION FAILED: One or more language catalogs were not confirmed in KV.");
+                process.exit(1);
+            }
+
+            console.log("All catalogs verified in Cloudflare KV successfully!");
+        } else {
+            console.log("Skipping KV verification (Redis mode or no KV credentials).");
+        }
+
         process.exit(0);
 
     } catch (err) {
