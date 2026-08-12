@@ -142,7 +142,11 @@ const cache = new CacheWrapper();
 // ==========================================
 // Holds the 8 language catalog arrays permanently in RAM.
 // KV is only read ONCE at startup per language, written every 6h scrape.
-const _catalogStore = {}; // e.g. { hindi: [...movies] }
+const _catalogStore = {}; // e.g. { hindi_15: [...movies] }
+
+// In-process ID Map store (pure RAM, zero KV reads per lookup after first load)
+const _idMapStore = {}; // e.g. { hindi: { tt1234567: "ABCD" }, ... }
+const _idMapDirty = {}; // tracks which languages need a KV flush
 
 function getCatalogFromStore(lang, maxPages) {
     return _catalogStore[`${lang}_${maxPages}`] || null;
