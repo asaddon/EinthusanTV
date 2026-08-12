@@ -239,11 +239,13 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
                 metas = await sources.getAllRecentMovies(1, configuration);
                 isTempCatalog = true;
                 
-                // Fire off the full 15-page fetch in the background so the next request gets the full catalog!
-                setImmediate(() => {
-                    console.info(`Triggering background 15-page fetch for ${configuration} after temporary 1-page serve.`);
-                    sources.getAllRecentMovies(15, configuration, false, false).catch(e => console.error(e));
-                });
+                // Fire off the full 15-page fetch in the background (if not already running) so the next request gets the full catalog!
+                if (!sources.isCatalogFetchInProgress(configuration, 15)) {
+                    setImmediate(() => {
+                        console.info(`Triggering background 15-page fetch for ${configuration} after temporary 1-page serve.`);
+                        sources.getAllRecentMovies(15, configuration, false, false).catch(e => console.error(e));
+                    });
+                }
             }
         }
 

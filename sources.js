@@ -930,6 +930,10 @@ async function getEinthusanIdByTitle(title, lang, ttnumber) {
 
 const pendingFetches = new Map();
 
+function isCatalogFetchInProgress(lang, maxPages) {
+    return pendingFetches.has(`recent_movies_${lang}_${maxPages}`);
+}
+
 // Optimized function to get all recent movies with parallel processing
 async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch = false) {
     const cacheKey = `recent_movies_${lang}_${maxPages}`;
@@ -1262,5 +1266,6 @@ module.exports = {
     initializeClientWithSession,
     decompressData,
     preloadFromKV,
-    getCachedCatalog
+    getCachedCatalog,
+    isCatalogFetchInProgress
 };
