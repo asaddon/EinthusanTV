@@ -12,7 +12,17 @@ const app = express();
 
 // Real-time Dashboard (Available at /status)
 const statusMonitor = require('express-status-monitor');
-app.use(statusMonitor());
+app.use(statusMonitor({
+    websocket: {
+        allowEIO3: true, // Fixes iOS Safari compatibility issues
+        transports: ['polling', 'websocket'], // Allow fallback for strict proxies
+        pingTimeout: 120000, // Prevent Cloudflare from killing idle connections
+        pingInterval: 25000
+    }
+}));
+
+// Suppress annoying favicon.ico 404 errors in console
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 app.use(compression());
 
