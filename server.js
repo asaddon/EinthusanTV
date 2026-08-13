@@ -9,5 +9,9 @@ app.listen((config.port), function () {
     //console.log(`HTTP addon accessible at: ${config.local}/configure`);
 });
 
-publishToCentral("https://einthusan.asaddon.com/manifest.json").catch((e)=>{console.error(e)})
-
+// Delay publishing by 20 seconds to give Render time to fully boot and route traffic
+setTimeout(() => {
+    publishToCentral("https://einthusan.asaddon.com/manifest.json")
+        .then(() => console.log("Successfully published v5.0.0 to Stremio Central!"))
+        .catch((e) => console.error("Central publish error (safe to ignore if already published):", e.message));
+}, 20000);
