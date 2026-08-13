@@ -271,6 +271,12 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
             res.setHeader('Cache-Control', 'max-age=30, stale-while-revalidate=30');
         }
 
+        // Handle Stremio Pagination for infinite catalogs
+        const skip = searchParams && searchParams.has("skip") ? parseInt(searchParams.get("skip"), 10) : 0;
+        if (metas && Array.isArray(metas)) {
+            metas = metas.slice(skip, skip + 100);
+        }
+
         //console.log(`Sending response for: ${req.url}`);
         return res.json({ metas });
     } catch (e) {

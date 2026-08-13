@@ -95,7 +95,9 @@ class CacheWrapper {
 
     async set(key, value, ttlSeconds = 1800, l1Only = false) {
         // 1. Save to L1 Memory Cache immediately
-        this.localCache.set(key, value, Math.min(ttlSeconds, 600));
+        // If it's an l1Only key, it needs its full TTL. If it's backed by KV, cap RAM to 10 mins.
+        const l1Ttl = l1Only ? ttlSeconds : Math.min(ttlSeconds, 600);
+        this.localCache.set(key, value, l1Ttl);
 
         // If l1Only, don't persist to KV/Redis — saves KV quota for important keys
         if (l1Only) return;
@@ -287,6 +289,7 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
             );
 
             if (uniqueNewMovies.length > 0) {
+                // Prepend new movies (Allowing infinite catalog growth as requested)
                 const updatedCache = uniqueNewMovies.concat(cachedMovies);
                 await cache.set(cacheKey, compressData(updatedCache), 604800);
                 console.info(`Added ${uniqueNewMovies.length} new movies for ${capitalizeFirstLetter(lang)}`);
