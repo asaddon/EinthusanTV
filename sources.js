@@ -226,18 +226,23 @@ async function saveIdMap(lang, mapObj) {
     _idMapDirty[key] = true;
 }
 
-// Flush dirty id_maps to KV every 5 minutes (batched writes instead of per-request writes)
+// Flush dirty id_maps to KV every 30 minutes (batched writes instead of per-request writes)
+// This makes it mathematically impossible to exceed the 1,000 daily KV write limit!
 setInterval(async () => {
-    for (const lang of Object.keys(_idMapDirty)) {
-        if (_idMapDirty[lang] && _idMapStore[lang]) {
+    const langs = require('./config').langs;
+    for (const lang of langs) {
+        const key = lang.toLowerCase();
+        if (_idMapDirty[key]) {
             try {
-                const cacheKey = `id_map_${lang}`;
-                await cache.set(cacheKey, compressData(_idMapStore[lang]), 604800);
-                delete _idMapDirty[lang];
-            } catch (e) { /* ignore */ }
+                const cacheKey = `id_map_${key}`;
+                await cache.set(cacheKey, compressData(_idMapStore[key]));
+                _idMapDirty[key] = false;
+            } catch (e) {
+                console.error(`Failed to flush id_map for ${lang}:`, e.message);
+            }
         }
     }
-}, 5 * 60 * 1000);
+}, 1800000);
 
 async function getMappedEinthusanId(imdbId, lang) {
     if (!imdbId || !lang) return null;
@@ -1186,8 +1191,7 @@ async function meta(einthusan_id, lang) {
         const cacheKey = einthusan_id.startsWith("tt")
             ? `tt_${einthusan_id}`
             : `einthusan_${einthusan_id}`;
-        
-        let cachedMeta = await cache.get(cacheKey);
+        let cachedMeta = await cache.get(cacheKey, true); // l1Only = true
 
         if (cachedMeta) {
             cachedMeta = decompressData(cachedMeta);
