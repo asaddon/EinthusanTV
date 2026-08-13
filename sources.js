@@ -271,7 +271,8 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
             let newMovies = [];
 
             try {
-                newMovies = await getAllRecentMovies(2, lang, false, true);
+                // Fetch 2 pages, force fetch (true), skip cache write (true) since it's just for diffing
+                newMovies = await getAllRecentMovies(2, lang, false, true, true);
             } catch (error) {
                 console.error(`Error fetching new movies for ${lang}:`, error);
             }
@@ -935,7 +936,7 @@ function isCatalogFetchInProgress(lang, maxPages) {
 }
 
 // Optimized function to get all recent movies with parallel processing
-async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch = false) {
+async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch = false, skipCacheWrite = false) {
     const cacheKey = `recent_movies_${lang}_${maxPages}`;
 
     // 1. Check permanent in-process catalog store (zero KV reads, zero network calls)
@@ -1132,8 +1133,18 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
             console.info(`${useColors ? '\x1b[33m' : ''}Fetched A Total Of ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[32m' : ''}${results.length}${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[33m' : ''} Unique Recent Movies In Language: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[36m' : ''}${capitalizeFirstLetter(lang)}${useColors ? '\x1b[0m' : ''}`);
         }
 
-        saveCatalogToStore(lang, maxPages, results); // save to permanent RAM
-        await cache.set(cacheKey, compressData(results), 604800);
+        if (maxPages === 15) {
+            saveCatalogToStore(lang, maxPages, results); // save only full catalogs to permanent RAM
+        }
+        
+        if (!skipCacheWrite) {
+            // Only write full 15-page catalogs to Cloudflare KV. 
+            // 1-page fetches are temporary, so keep them strictly in L1 RAM to save KV limits!
+            const l1Only = (maxPages !== 15);
+            const ttl = l1Only ? 1800 : 604800; // 30 minutes for temp L1, 7 days for full KV catalogs
+            await cache.set(cacheKey, compressData(results), ttl, l1Only);
+        }
+        
         return results;
         } catch (err) {
             console.error("Error in getAllRecentMovies:", err.message);
