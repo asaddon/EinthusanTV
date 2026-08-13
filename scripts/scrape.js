@@ -43,6 +43,17 @@ async function main() {
             console.warn("No login credentials provided. Scraping public pages only.");
         }
 
+        if (hasCFKV) {
+            console.log("Performing early check on Cloudflare KV limits...");
+            const earlyCheck = await verifyKV("hindi");
+            if (earlyCheck.ok === false && earlyCheck.reason.includes('429')) {
+                console.error(`\nFATAL: ${earlyCheck.reason}`);
+                console.error("Aborting scrape immediately to save GitHub Actions compute time and avoid needlessly hammering Einthusan.");
+                process.exit(1);
+            }
+            console.log("Cloudflare KV is available and within limits.");
+        }
+
         console.log("Starting full catalog fetch...");
         
         // Ensure cache is connected (ioredis connects automatically, but we might want to wait a split second)
