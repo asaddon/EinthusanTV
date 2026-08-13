@@ -14,8 +14,15 @@ const app = express();
 const os = require('os');
 app.get('/status', (req, res) => {
     const mem = process.memoryUsage();
+    const ut = process.uptime();
+    const days = Math.floor(ut / 86400);
+    const hours = Math.floor((ut % 86400) / 3600);
+    const minutes = Math.floor((ut % 3600) / 60);
+    const seconds = Math.floor(ut % 60);
+    const uptimeStr = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
     res.json({
-        uptime: process.uptime(),
+        uptime: uptimeStr,
         memory: {
             rss: `${(mem.rss / 1024 / 1024).toFixed(2)} MB`,
             heapTotal: `${(mem.heapTotal / 1024 / 1024).toFixed(2)} MB`,
