@@ -559,7 +559,7 @@ async function getImdbId(title, year) {
     }
 
     const cacheKey = `imdb_${normalizeTitle(cleanedTitle)}_${year || 'any'}`;
-    const cached = await cache.get(cacheKey);
+    const cached = await cache.get(cacheKey, true); // l1Only = true
     if (cached) {
         //console.log(`Cache Hit For IMDb ID: ${cleanedTitle} ${year ? `(${year})` : ''}`);
         return decompressData(cached);
@@ -695,7 +695,7 @@ async function stream(einthusan_id, lang) {
 
     const imdb = einthusan_id;
     const cacheKey = `stream_${einthusan_id}_${lang}`;
-    const cached = await cache.get(cacheKey);
+    const cached = await cache.get(cacheKey, true); // l1Only = true
 
     if (cached) {
         const cachedResult = decompressData(cached);
