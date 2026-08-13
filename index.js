@@ -21,8 +21,8 @@ app.use(statusMonitor({
     }
 }));
 
-// Suppress annoying favicon.ico 404 errors in console
-app.get('/favicon.ico', (req, res) => res.status(204).end());
+// Redirect favicon.ico requests to the actual Einthusan favicon
+app.get('/favicon.ico', (req, res) => res.redirect('https://einthusan.tv/etc/favicon-16x16.png'));
 
 app.use(compression());
 
