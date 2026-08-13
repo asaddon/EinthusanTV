@@ -594,7 +594,7 @@ async function getImdbId(title, year) {
 // Create a promise cache
 const promiseCache = new Map();
 
-async function ttnumberToTitle(ttNumber, retries = 5) {
+async function ttnumberToTitle(ttNumber, retries = 1) {
     if (!/^tt\d{7,8}$/.test(ttNumber)) {
         throw new Error('Invalid IMDb ID format.');
     }
@@ -607,10 +607,9 @@ async function ttnumberToTitle(ttNumber, retries = 5) {
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
                 let title = await fetchFromCinemeta(ttNumber) || 
-                            await fetchFromIMDbApi(ttNumber) || 
-                            await fetchFromIMDbPage(ttNumber);
+                            await fetchFromIMDbApi(ttNumber);
                 if (title) return title;
-                throw new Error('No title found on IMDb API, Cinemeta, or IMDb Page');
+                throw new Error('No title found on IMDb API or Cinemeta');
             } catch (err) {
                 if (attempt < retries) {
                     await sleep(2000);
@@ -707,6 +706,9 @@ async function stream(einthusan_id, lang) {
 
     if (cached) {
         const cachedResult = decompressData(cached);
+        if (cachedResult.streams && cachedResult.streams.length === 0) {
+            return cachedResult; // Negative cache hit
+        }
         const cachedTitle = cachedResult.streams[0].title;
         console.info(`${useColors ? '\x1b[32m' : ''}Cache Hit For Stream:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[36m' : ''}${cachedTitle.replace(/\n/g, ' ')}${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[33m' : ''}(${einthusan_id})${useColors ? '\x1b[0m' : ''}`);
         return cachedResult;
@@ -780,11 +782,14 @@ async function stream(einthusan_id, lang) {
         return result;
     } catch (err) {
         // Handle specific and general errors
-        if (err.message.includes("Einthusan ID could not be retrieved") || err.message.includes("is not valid for the language")) {
-            // Handle specific case (suppress logging or take other actions)
+        if (err.message.includes("Einthusan ID could not be retrieved") || err.message.includes("is not valid for the language") || err.message.includes("No title found")) {
+            await cache.set(cacheKey, compressData({ streams: [] }), 7200, true);
         } else {
             console.error("Error in Stream Function:", err.message);
+            // Cache server errors briefly to prevent spamming Einthusan if they are down
+            await cache.set(cacheKey, compressData({ streams: [] }), 300, true);
         }
+        return { streams: [] };
     }
 }
 
