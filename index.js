@@ -36,29 +36,12 @@ app.get('/status', (req, res) => {
     });
 });
 
-// Status monitor removed due to socket.io incompatibility with Render
-
 // Redirect favicon.ico requests to the actual Einthusan favicon
 app.get('/favicon.ico', (req, res) => res.redirect('https://einthusan.tv/etc/favicon-16x16.png'));
 
 app.use(compression());
 
-// Prevent multiple responses middleware
-app.use((req, res, next) => {
-    const originalSend = res.send;
-    let hasSent = false;
 
-    res.send = function (...args) {
-        if (!hasSent) {
-            hasSent = true;
-            originalSend.apply(res, args);
-        } else {
-            console.warn('Attempted to send multiple responses for request:', req.url);
-        }
-        return res;
-    };
-    next();
-});
 
 // Global error handler for unhandled promise rejections
 process.on('unhandledRejection', (err) => {
@@ -69,7 +52,7 @@ process.on('unhandledRejection', (err) => {
 });
 
 // Constants
-const FETCH_INTERVAL = '0 */6 * * *'; // Every 6 hours
+
 const LOGIN_INTERVAL = '0 0 * * *'; // Every 24 hours
 const REQUEST_TIMEOUT = 120 * 1000; // 120 seconds
 
