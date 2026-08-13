@@ -10,16 +10,26 @@ require('dotenv').config();
 
 const app = express();
 
-// Real-time Dashboard (Available at /status)
-const statusMonitor = require('express-status-monitor');
-app.use(statusMonitor({
-    websocket: {
-        allowEIO3: true, // Fixes iOS Safari compatibility issues
-        transports: ['polling', 'websocket'], // Allow fallback for strict proxies
-        pingTimeout: 120000, // Prevent Cloudflare from killing idle connections
-        pingInterval: 25000
-    }
-}));
+// Ultra-lightweight Status Monitor (0 dependencies, crash-proof)
+const os = require('os');
+app.get('/status', (req, res) => {
+    const mem = process.memoryUsage();
+    res.json({
+        uptime: process.uptime(),
+        memory: {
+            rss: `${(mem.rss / 1024 / 1024).toFixed(2)} MB`,
+            heapTotal: `${(mem.heapTotal / 1024 / 1024).toFixed(2)} MB`,
+            heapUsed: `${(mem.heapUsed / 1024 / 1024).toFixed(2)} MB`,
+        },
+        system: {
+            freeRam: `${(os.freemem() / 1024 / 1024).toFixed(2)} MB`,
+            totalRam: `${(os.totalmem() / 1024 / 1024).toFixed(2)} MB`,
+            cpuLoad: os.loadavg()
+        }
+    });
+});
+
+// Status monitor removed due to socket.io incompatibility with Render
 
 // Redirect favicon.ico requests to the actual Einthusan favicon
 app.get('/favicon.ico', (req, res) => res.redirect('https://einthusan.tv/etc/favicon-16x16.png'));
