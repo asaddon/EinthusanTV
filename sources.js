@@ -363,16 +363,16 @@ const decompressData = (data) => {
 // Create axios instance with optimized settings
 const client = wrapper(axios.create({
     baseURL: config.BaseURL, // Replace with your base URL
-    timeout: 1200000,
+    timeout: 10000, // Reduced from 20 minutes to 10 seconds to prevent hanging Stremio requests
     headers: {
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive'
     },
-        // Attach the cookie jar
+    // Attach the cookie jar
     jar,
     withCredentials: true, // Ensure cookies are sent with requests
     // Implement retry logic
-    retries: 3,
+    retries: 1, // Reduced to prevent compounding delays
     retryDelay: (retryCount) => retryCount * 1000
 }));
 
