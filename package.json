@@ -20,6 +20,7 @@
 		"node-html-parser": "latest",
 		"node-schedule": "latest",
 		"stremio-addon-sdk": "latest",
+		"swagger-stats": "^0.99.7",
 		"tough-cookie": "latest"
 	},
 	"devDependencies": {

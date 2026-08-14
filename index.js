@@ -10,31 +10,18 @@ require('dotenv').config();
 
 const app = express();
 
-// Ultra-lightweight Status Monitor (0 dependencies, crash-proof)
-const os = require('os');
-app.get('/status', (req, res) => {
-    const mem = process.memoryUsage();
-    const ut = process.uptime();
-    const days = Math.floor(ut / 86400);
-    const hours = Math.floor((ut % 86400) / 3600);
-    const minutes = Math.floor((ut % 3600) / 60);
-    const seconds = Math.floor(ut % 60);
-    const uptimeStr = `${days}d ${hours}h ${minutes}m ${seconds}s`;
-
-    res.json({
-        uptime: uptimeStr,
-        memory: {
-            rss: `${(mem.rss / 1024 / 1024).toFixed(2)} MB`,
-            heapTotal: `${(mem.heapTotal / 1024 / 1024).toFixed(2)} MB`,
-            heapUsed: `${(mem.heapUsed / 1024 / 1024).toFixed(2)} MB`,
-        },
-        system: {
-            freeRam: `${(os.freemem() / 1024 / 1024).toFixed(2)} MB`,
-            totalRam: `${(os.totalmem() / 1024 / 1024).toFixed(2)} MB`,
-            cpuLoad: os.loadavg()
-        }
-    });
-});
+// Add swagger-stats monitoring (Crash-proof telemetry dashboard)
+const swStats = require('swagger-stats');
+app.use(swStats.getMiddleware({
+    name: 'EinthusanTV Addon',
+    version: manifest.version,
+    uriPath: '/status', // Map dashboard to /status/ui
+    authentication: true,
+    onAuthenticate: function(req, username, password) {
+        // Basic auth so random people can't snoop your traffic
+        return ((username === (process.env.STATS_USERNAME || 'admin')) && (password === process.env.STATS_PASSWORD));
+    }
+}));
 
 // Redirect favicon.ico requests to the actual Einthusan favicon
 app.get('/favicon.ico', (req, res) => res.redirect('https://einthusan.tv/etc/favicon-16x16.png'));
