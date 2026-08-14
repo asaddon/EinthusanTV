@@ -63,9 +63,8 @@ async function main() {
         
         console.log("Scrape completely finished. Flushing pending KV writes...");
         
-        // Wait for the 5-min id_map batch flush interval to be irrelevant — force flush by waiting
-        // and let any pending writes complete
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await sources.forceFlushIdMaps();
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Give network one last moment
 
         // ============================================================
         // VERIFICATION: Check that each language catalog is in KV

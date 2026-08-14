@@ -228,9 +228,7 @@ async function saveIdMap(lang, mapObj) {
     _idMapDirty[key] = true;
 }
 
-// Flush dirty id_maps to KV every 30 minutes (batched writes instead of per-request writes)
-// This makes it mathematically impossible to exceed the 1,000 daily KV write limit!
-setInterval(async () => {
+async function forceFlushIdMaps() {
     const langs = require('./config').langs;
     for (const lang of langs) {
         const key = lang.toLowerCase();
@@ -239,12 +237,17 @@ setInterval(async () => {
                 const cacheKey = `id_map_${key}`;
                 await cache.set(cacheKey, compressData(_idMapStore[key]));
                 _idMapDirty[key] = false;
+                console.log(`Successfully flushed id_map for ${lang} to KV.`);
             } catch (e) {
                 console.error(`Failed to flush id_map for ${lang}:`, e.message);
             }
         }
     }
-}, 1800000);
+}
+
+// Flush dirty id_maps to KV every 30 minutes (batched writes instead of per-request writes)
+// This makes it mathematically impossible to exceed the 1,000 daily KV write limit!
+setInterval(forceFlushIdMaps, 1800000);
 
 async function getMappedEinthusanId(imdbId, lang) {
     if (!imdbId || !lang) return null;
@@ -1290,5 +1293,6 @@ module.exports = {
     decompressData,
     preloadFromKV,
     getCachedCatalog,
-    isCatalogFetchInProgress
+    isCatalogFetchInProgress,
+    forceFlushIdMaps
 };
