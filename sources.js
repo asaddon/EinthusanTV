@@ -363,7 +363,7 @@ const decompressData = (data) => {
 // Create axios instance with optimized settings
 const client = wrapper(axios.create({
     baseURL: config.BaseURL, // Replace with your base URL
-    timeout: 10000, // Reduced from 20 minutes to 10 seconds to prevent hanging Stremio requests
+    timeout: 5000, // Reduced to 5 seconds to prevent Stremio 15s abort compounding
     headers: {
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive'
@@ -372,7 +372,7 @@ const client = wrapper(axios.create({
     jar,
     withCredentials: true, // Ensure cookies are sent with requests
     // Implement retry logic
-    retries: 1, // Reduced to prevent compounding delays
+    retries: 0, // Disabled retries to enforce strict fail-fast for Stremio clients
     retryDelay: (retryCount) => retryCount * 1000
 }));
 
@@ -639,7 +639,7 @@ async function ttnumberToTitle(ttNumber, retries = 1) {
 async function fetchFromIMDbApi(ttNumber) {
     const imdbApiUrl = `https://v2.sg.media-imdb.com/suggestion/t/${ttNumber}.json`;
     try {
-        const imdbResponse = await axios.get(imdbApiUrl, { timeout: 10000 });
+        const imdbResponse = await axios.get(imdbApiUrl, { timeout: 4000 });
         const media = imdbResponse.data.d.find(item => item.id === ttNumber);
         
         // Reject if it is a TV series
@@ -657,7 +657,7 @@ async function fetchFromIMDbApi(ttNumber) {
 async function fetchFromCinemeta(ttNumber) {
     const cinemetaApiUrl = `https://v3-cinemeta.strem.io/meta/movie/${ttNumber}.json`;
     try {
-        const cinemetaResponse = await axios.get(cinemetaApiUrl, { timeout: 10000 });
+        const cinemetaResponse = await axios.get(cinemetaApiUrl, { timeout: 4000 });
         return cinemetaResponse.data.meta?.name || null;
     } catch (err) {
         //console.warn(`Cinemeta API failed: ${err.message}`);
