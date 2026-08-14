@@ -456,7 +456,7 @@ client.interceptors.response.use(undefined, async (err) => {
 
     config.retryCount = config.retryCount ?? 0;
     if (config.retryCount >= Math.min(config.retries, 5)) {  // Cap retries at 5
-        console.error(`Request failed after ${config.retryCount} retries:`, err);
+        console.error(`Request failed after ${config.retryCount} retries:`, err.message);
         return Promise.reject(err); // Ensure the error is thrown
     }
 
