@@ -10,6 +10,15 @@ require('dotenv').config();
 
 const app = express();
 
+// Enforce Custom Domain (Block direct Render URL traffic that bypasses Cloudflare WAF)
+app.use((req, res, next) => {
+    const host = req.get('host') || '';
+    if (host.includes('onrender.com')) {
+        return res.status(403).send('Direct access to Render URL is forbidden. Please use the official custom domain.');
+    }
+    next();
+});
+
 // Add swagger-stats monitoring (Crash-proof telemetry dashboard)
 const swStats = require('swagger-stats');
 app.use(swStats.getMiddleware({
