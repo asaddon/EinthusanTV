@@ -337,7 +337,7 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
 const jar = new CookieJar();
 
 // Render / Hugging Face Refresh Start
-const renderUrl = process.env.KEEP_ALIVE_URL || 'https://einthusantv-k9mh.onrender.com/';
+const renderUrl = process.env.KEEP_ALIVE_URL || 'https://einthusan.asaddon.com/';
 const interval = 10 * 60 * 1000; // 10 minutes in milliseconds
 const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Karachi', timeZoneName: 'long' };
 
