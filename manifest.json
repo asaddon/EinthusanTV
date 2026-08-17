@@ -12,5 +12,9 @@
     "behaviorHints": {
         "configurable": true,
         "configurationRequired": true
+    },
+    "stremioAddonsConfig": {
+        "issuer": "https://stremio-addons.net",
+        "signature": "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..RHF267pBergwKe56CCGpTg.GTjjW45OP8fqoSuZLKWn_t-ZFx7hi-U8DBbWfmQ2xntvHQh3mJYB1rkxcNqY2_sh1637h4EuAvSGoHjoGcuYMeXy0MxTnEA6mnrL5V8RcaDGa09XzBjOYf8B4-rmae1Z.43fycKrG2m4pNPCasmHXnA"
     }
 }
