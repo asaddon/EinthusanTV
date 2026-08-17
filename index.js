@@ -14,7 +14,7 @@ const app = express();
 app.use((req, res, next) => {
     const host = req.get('host') || '';
     if (host.includes('onrender.com')) {
-        return res.status(403).send('Direct access to Render URL is forbidden. Please use the official custom domain.');
+        return res.redirect(301, `https://einthusan.asaddon.com${req.originalUrl}`);
     }
     next();
 });
