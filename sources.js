@@ -356,13 +356,24 @@ setInterval(async () => {
   }, interval);
   
 // Render Refresh End
-// Compression and Decompression Functions
+// Compression and Decompression Functions (Upgraded to Brotli)
 const compressData = (data) => {
-    return zlib.deflateSync(JSON.stringify(data)).toString('base64');
+    return zlib.brotliCompressSync(JSON.stringify(data)).toString('base64');
 };
 
 const decompressData = (data) => {
-    return JSON.parse(zlib.inflateSync(Buffer.from(data, 'base64')).toString());
+    const buffer = Buffer.from(data, 'base64');
+    try {
+        // Try Brotli first (New standard)
+        return JSON.parse(zlib.brotliDecompressSync(buffer).toString());
+    } catch (e) {
+        try {
+            // Fallback to Deflate (For older cached keys)
+            return JSON.parse(zlib.inflateSync(buffer).toString());
+        } catch (err) {
+            return null;
+        }
+    }
 };
 // Create axios instance with optimized settings
 const client = wrapper(axios.create({
