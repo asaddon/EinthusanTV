@@ -114,7 +114,7 @@ app.get('/', (_, res) => {
 });
 
 // Serve index.html with cache control
-app.get('/:configuration?/configure/', (_, res) => {
+app.get(['/configure/?', '/:configuration/configure/?', '/:rpdbKey/:configuration/configure/?'], (_, res) => {
     if (!res.headersSent) {
         res.setHeader('Cache-Control', 'max-age=86400, stale-while-revalidate');
         res.setHeader('Content-Type', 'text/html');
