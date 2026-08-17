@@ -24,7 +24,7 @@ class CacheWrapper {
             stdTTL: 10 * 60, // 10 minutes in memory
             checkperiod: 60, // Check for expired keys every 60 seconds
             useClones: false,
-            maxKeys: 2000 // Must be large enough to hold all active keys in L1
+            maxKeys: 50000 // Increased from 2000 to handle weekend traffic spikes without crashing
         });
 
         if (this.useCloudflareKV) {
@@ -97,7 +97,11 @@ class CacheWrapper {
         // 1. Save to L1 Memory Cache immediately
         // If it's an l1Only key, it needs its full TTL. If it's backed by KV, cap RAM to 10 mins.
         const l1Ttl = l1Only ? ttlSeconds : Math.min(ttlSeconds, 600);
-        this.localCache.set(key, value, l1Ttl);
+        try {
+            this.localCache.set(key, value, l1Ttl);
+        } catch (err) {
+            console.warn(`L1 Cache set failed (likely ECACHEFULL). Ignoring error so request succeeds:`, err.message);
+        }
 
         // If l1Only, don't persist to KV/Redis — saves KV quota for important keys
         if (l1Only) return;
