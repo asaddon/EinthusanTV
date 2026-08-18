@@ -40,8 +40,8 @@
                             Cancel
                         </button>
                         <button type="button" @click="methods.copyLink()"
-                            class="text-gray-300 bg-transparent hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-700 rounded-lg border border-gray-600 text-sm font-medium px-5 py-2.5 transition-colors">
-                            Copy Link
+                            class="text-gray-300 bg-transparent hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-700 rounded-lg border border-gray-600 text-sm font-medium px-5 py-2.5 transition-colors w-[120px]">
+                            {{ state.isCopied ? 'Copied! ✨' : 'Copy Link' }}
                         </button>
                         <a id="install_button" href="#">
                             <button type="button"
@@ -97,7 +97,7 @@
                             Note
                         </h3>
                         <ul class="space-y-2 pl-6 list-disc marker:text-purple-500 text-xs">
-                            <li>To use multiple languages, simply re-add the addon with each desired language.</li>
+                            <li>Select all the languages you want to install. They will all be bundled into a single Stremio addon!</li>
                         </ul>
                     </div>
                 </div>
@@ -106,18 +106,14 @@
                 <div class="space-y-6">
                     <!-- Language Selection -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Language</label>
-                        <div class="relative group">
-                            <select v-model="state.Language" @change="methods.selectLang()" 
-                                class="block w-full appearance-none bg-gray-900/60 border border-gray-600 text-white text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 p-4 transition-all duration-300 group-hover:border-purple-400/50">
-                                <option disabled value="">Select Language</option>
-                                <option v-for="language in state.languages" :value="language" class="bg-gray-900 text-white">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Languages <span class="text-gray-500 text-xs font-normal">(You can select multiple)</span></label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <label v-for="language in state.languages" :key="language" class="cursor-pointer">
+                                <input type="checkbox" :value="language" v-model="state.SelectedLanguages" @change="methods.selectLang()" class="peer sr-only">
+                                <div class="rounded-xl border border-gray-600 bg-gray-900/60 px-4 py-3 text-center text-sm font-medium text-gray-300 transition-all hover:bg-gray-800 peer-checked:border-purple-500 peer-checked:bg-purple-900/30 peer-checked:text-white shadow-sm">
                                     {{ language.charAt(0).toUpperCase() + language.slice(1) }}
-                                </option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </div>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
@@ -130,7 +126,7 @@
                         
                         <form @submit.prevent="methods.ValidateRPDB" class="flex flex-col sm:flex-row gap-3">
                             <div class="relative flex-1">
-                                <input v-model="state.RPDBkey.key" type="text"
+                                <input v-model="state.RPDBkey.key" @input="state.RPDBkey.valid = null" type="text"
                                     class="block w-full bg-gray-900/60 border border-gray-600 text-white text-sm rounded-xl focus:ring-pink-500 focus:border-pink-500 p-3.5 transition-all duration-300 placeholder-gray-500"
                                     placeholder="Paste API Key here..." required>
                                 
@@ -152,12 +148,14 @@
 
                 <!-- Install Section -->
                 <div class="mt-10 pt-8 border-t border-gray-700/50 text-center">
-                    <button :disabled='state.isDisabled'
-                        @click="state.install.show(); methods.generateInstallUrl();" type="button"
+                    <div v-if="state.RPDBkey.key && state.RPDBkey.key.trim() !== '' && state.RPDBkey.valid !== true" class="mb-4 text-sm text-yellow-400 font-medium bg-yellow-400/10 py-2 px-4 rounded-xl border border-yellow-400/20 inline-block">
+                        ⚠️ Please validate your RPDB key to unlock installation
+                    </div>
+                    <button :disabled='isInstallDisabled'
+                            @click="state.install.show(); methods.generateInstallUrl();" type="button"
                         class="w-full sm:w-auto min-w-[250px] text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-4 focus:ring-purple-800 font-bold rounded-2xl text-lg px-8 py-4 shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:shadow-[0_0_45px_rgba(236,72,153,0.6)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transition-all duration-300 transform hover:-translate-y-1">
                         Install Addon
                     </button>
-                    <p class="mt-4 text-xs text-gray-500 font-medium tracking-wide uppercase">Requires Stremio App</p>
                 </div>
 
                 <!-- Footer Credits -->
@@ -173,7 +171,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, computed } from 'vue';
 import 'flowbite';
 import { useHead } from "@vueuse/head";
 import * as manifest from '../../manifest.json';
@@ -193,28 +191,35 @@ useHead({
 const state = reactive({
     languages: ["hindi", "tamil", "telugu", "malayalam", "kannada", "bengali", "marathi", "punjabi"],
     install: null,
-    Language: '',
+    SelectedLanguages: [],
     isDisabled: true,
     httpsUrl: '',
     RPDBkey: {
         key: null, // RPDB API key
         valid: null, // Validation status (null, true, false)
         tier: null // Tier of the key (if valid)
-    }
+    },
+    isCopied: false
 });
 
 // Ref for the install modal
 const installModal = ref();
 
+// Computed property to control install button state
+const isInstallDisabled = computed(() => {
+    if (state.SelectedLanguages.length === 0) return true;
+    if (state.RPDBkey.key && state.RPDBkey.key.trim() !== '' && state.RPDBkey.valid !== true) return true;
+    return false;
+});
+
 // Methods
 const methods = {
     selectLang() {
-        state.isDisabled = false;
         this.generateInstallUrl();
     },
 
     generateInstallUrl() {
-        const configuration = state.Language ? '/' + state.Language : '';
+        const configuration = state.SelectedLanguages.length > 0 ? '/' + state.SelectedLanguages.join(',') : '';
         const rpdbConfig = state.RPDBkey.key && state.RPDBkey.valid ? `/${state.RPDBkey.key}` : ''; // Add RPDB key only if valid
         const location = window.location.host + rpdbConfig + configuration + '/manifest.json';
         document.getElementById("install_button").href = 'stremio://' + location;
@@ -225,7 +230,10 @@ const methods = {
     copyLink() {
         if (state.httpsUrl) {
             navigator.clipboard.writeText(state.httpsUrl).then(() => {
-                alert('Addon HTTPS link copied to clipboard!');
+                state.isCopied = true;
+                setTimeout(() => {
+                    state.isCopied = false;
+                }, 2000);
             }).catch(err => {
                 console.error('Could not copy text: ', err);
                 alert('Failed to copy link. Check console for details.');

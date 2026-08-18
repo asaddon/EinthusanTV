@@ -217,26 +217,43 @@ app.get('/:rpdbKey?/:configuration/manifest.json', (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         const { rpdbKey, configuration } = req.params;
 
-        if (config.langs.includes(configuration)) {
+        const requestedLangs = configuration.split(',');
+        const validLangs = requestedLangs.filter(lang => config.langs.includes(lang));
+
+        const langShortcodes = {
+            hindi: 'HI', tamil: 'TA', telugu: 'TE', malayalam: 'ML',
+            kannada: 'KN', bengali: 'BN', marathi: 'MR', punjabi: 'PA'
+        };
+
+        if (validLangs.length > 0) {
             manifest.behaviorHints.configurationRequired = false;
             const localizedManifest = { ...manifest };
-            localizedManifest.name = `EinthusanTV - ${capitalizeFirstLetter(configuration)}`;
-            localizedManifest.catalogs = [
-                {
+            
+            if (validLangs.length === 1) {
+                localizedManifest.name = `EinthusanTV - ${capitalizeFirstLetter(validLangs[0])}`;
+            } else {
+                const shortcodes = validLangs.map(l => langShortcodes[l] || capitalizeFirstLetter(l).substring(0, 2)).join(', ');
+                localizedManifest.name = `EinthusanTV - ${shortcodes}`;
+            }
+            
+            localizedManifest.catalogs = [];
+            
+            for (const lang of validLangs) {
+                localizedManifest.catalogs.push({
                     type: "movie",
-                    id: configuration,
-                    name: `EinthusanTV - Search - ${capitalizeFirstLetter(configuration)}`,
+                    id: lang,
+                    name: `Search - ${capitalizeFirstLetter(lang)}`,
                     extra: [{ name: "search", isRequired: true }]
-                },
-                {
+                });
+                localizedManifest.catalogs.push({
                     type: "movie",
-                    id: `${configuration}_board`,
-                    name: `EinthusanTV - Newly Added - ${capitalizeFirstLetter(configuration)}`,
+                    id: `${lang}_board`,
+                    name: `Newly Added - ${capitalizeFirstLetter(lang)}`,
                     extra: [{ name: "skip", isRequired: false }]
-                }
-            ];
-
-            console.log(`Addon Installed for Language: ${capitalizeFirstLetter(configuration)}${rpdbKey ? ` with RPDB Key: ${rpdbKey}` : ''}`);
+                });
+            }
+            
+            console.log(`Addon Installed for Languages: ${validLangs.map(capitalizeFirstLetter).join(', ')}${rpdbKey ? ` with RPDB Key: ${rpdbKey}` : ''}`);
             return res.json(localizedManifest);
         }
         return res.status(400).send({ error: "Invalid configuration" });
@@ -251,10 +268,11 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
         //console.log(`Processing catalog request: ${req.url}`);
 
         const { rpdbKey, configuration, id, extra } = req.params;
-        const catalogId = config.langs.includes(id) ? id : id.split('_')[0];
+        const catalogId = id.split('_')[0]; // Extract language from catalog ID
+        const requestedLangs = configuration.split(',');
 
-        if (!config.langs.includes(catalogId)) {
-            return res.status(400).send({ error: "Invalid catalog ID" });
+        if (!config.langs.includes(catalogId) || !requestedLangs.includes(catalogId)) {
+            return res.status(400).send({ error: "Invalid catalog ID or language not installed" });
         }
 
         const searchParams = extra ? new URLSearchParams(extra) : null;
@@ -266,27 +284,27 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
 
         let isTempCatalog = false;
 
-        if (id === `${configuration}_board`) {
-            metas = await sources.getCachedCatalog(configuration, 15);
+        if (id === `${catalogId}_board`) {
+            metas = await sources.getCachedCatalog(catalogId, 15);
 
             if (!metas) {
                 // If the 15-page catalog is missing (e.g. KV rate limited and no scrape has finished),
                 // fall back to a rapid 1-page scrape just to keep the Stremio UI from timing out.
-                metas = await sources.getAllRecentMovies(1, configuration);
+                metas = await sources.getAllRecentMovies(1, catalogId);
                 isTempCatalog = true;
                 
                 // Fire off the full 15-page fetch in the background (if not already running) so the next request gets the full catalog!
-                if (!sources.isCatalogFetchInProgress(configuration, 15)) {
+                if (!sources.isCatalogFetchInProgress(catalogId, 15)) {
                     setImmediate(() => {
-                        console.info(`Triggering background 15-page fetch for ${configuration} after temporary 1-page serve.`);
-                        sources.getAllRecentMovies(15, configuration, false, false).catch(e => console.error(e));
+                        console.info(`Triggering background 15-page fetch for ${catalogId} after temporary 1-page serve.`);
+                        sources.getAllRecentMovies(15, catalogId, false, false).catch(e => console.error(e));
                     });
                 }
             }
         }
 
         if (!metas) {
-            metas = await sources.getAllRecentMovies(15, configuration);
+            metas = await sources.getAllRecentMovies(15, catalogId);
         }
 
         if (metas && Array.isArray(metas) && rpdbKey) {
@@ -320,14 +338,22 @@ app.get('/:rpdbKey?/:configuration/stream/movie/:id/:extra?.json', async (req, r
         //console.log(`Processing stream request: ${req.url}`);
 
         const { rpdbKey, configuration, id } = req.params;
-        let streams;
+        const requestedLangs = configuration.split(',');
+        let allStreams = [];
 
         if (id.startsWith("einthusan") || id.startsWith("tt")) {
-            streams = await sources.stream(id, configuration);
+            for (const lang of requestedLangs) {
+                if (config.langs.includes(lang)) {
+                    const result = await sources.stream(id, lang);
+                    if (result && result.streams && result.streams.length > 0) {
+                        allStreams.push(...result.streams);
+                    }
+                }
+            }
         }
 
         //console.log(`Sending response for: ${req.url}`);
-        return res.json({ streams: streams?.streams || [] });
+        return res.json({ streams: allStreams });
     } catch (e) {
         console.error(`Error in stream request ${req.url}:`, e);
         if (!res.headersSent) {
@@ -343,14 +369,23 @@ app.get('/:rpdbKey?/:configuration/meta/movie/:id/:extra?.json', async (req, res
         //console.log(`Processing meta request: ${req.url}`);
 
         const { rpdbKey, configuration, id } = req.params;
+        const requestedLangs = configuration.split(',');
         let meta;
 
         if (id.startsWith("einthusan") || id.startsWith("tt")) {
-            meta = await sources.meta(id, configuration);
+            for (const lang of requestedLangs) {
+                if (config.langs.includes(lang)) {
+                    const result = await sources.meta(id, lang);
+                    if (result && Object.keys(result).length > 0) {
+                        meta = result;
+                        break; // Metadata is identical across languages, return first found
+                    }
+                }
+            }
         }
 
         //console.log(`Sending response for: ${req.url}`);
-        return res.json({ meta: meta || [] });
+        return res.json({ meta: meta || {} });
     } catch (e) {
         console.error(`Error in meta request ${req.url}:`, e);
         if (!res.headersSent) {
