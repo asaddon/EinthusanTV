@@ -19,6 +19,42 @@ app.use((req, res, next) => {
     next();
 });
 
+// Strict Allowlist Middleware (Blocks useless bots from polluting logs)
+// Drops any request that isn't explicitly an addon route, asset, or dashboard
+app.use((req, res, next) => {
+    const path = req.path;
+    
+    const isAllowed = 
+        path.startsWith('/status') ||
+        path.startsWith('/configure') ||
+        path.startsWith('/assets') ||
+        path.endsWith('.json') ||
+        path === '/favicon.ico' ||
+        path === '/robots.txt' ||
+        path === '/'; // root redirects to /configure
+
+    if (!isAllowed) {
+        // Drop the request instantly without logging to swagger-stats
+        return res.status(403).send('Forbidden');
+    }
+    
+    // Additional fast-fail for all non-movie types (series, tv, anime, other, etc.)
+    // Because this addon is strictly movies only, we instantly return empty arrays for everything else.
+    if (path.endsWith('.json')) {
+        const isStremioResource = path.includes('/stream/') || path.includes('/meta/') || path.includes('/catalog/');
+        if (isStremioResource && !path.includes('/movie/')) {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Cache-Control', 'max-age=21600, stale-while-revalidate');
+            
+            if (path.includes('/stream/')) return res.json({ streams: [] });
+            if (path.includes('/meta/')) return res.json({ meta: {} });
+            if (path.includes('/catalog/')) return res.json({ metas: [] });
+        }
+    }
+    
+    next();
+});
+
 // Add swagger-stats monitoring (Crash-proof telemetry dashboard)
 const swStats = require('swagger-stats');
 app.use(swStats.getMiddleware({
@@ -113,6 +149,12 @@ app.get('/', (_, res) => {
     if (!res.headersSent) res.redirect('/configure/');
 });
 
+// Basic robots.txt to prevent 404 logs
+app.get('/robots.txt', (_, res) => {
+    res.type('text/plain');
+    res.send("User-agent: *\nDisallow: /");
+});
+
 // Serve index.html with cache control
 app.get(['/configure/?', '/:configuration/configure/?', '/:rpdbKey/:configuration/configure/?'], (_, res) => {
     if (!res.headersSent) {
@@ -199,21 +241,7 @@ app.get('/:rpdbKey?/:configuration/manifest.json', (req, res) => {
     }
 });
 
-// Fast-fail for TV Series requests (Einthusan is movies only)
-app.get('/:rpdbKey?/:configuration/stream/series/:id/:extra?.json', (req, res) => {
-    setCommonHeaders(res);
-    return res.json({ streams: [] });
-});
 
-app.get('/:rpdbKey?/:configuration/meta/series/:id/:extra?.json', (req, res) => {
-    setCommonHeaders(res);
-    return res.json({ meta: {} });
-});
-
-app.get('/:rpdbKey?/:configuration/catalog/series/:id/:extra?.json', (req, res) => {
-    setCommonHeaders(res);
-    return res.json({ metas: [] });
-});
 // Handle catalog requests
 app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, res) => {
     try {
