@@ -42,7 +42,9 @@ app.use((req, res, next) => {
     // Because this addon is strictly movies only, we instantly return empty arrays for everything else.
     if (path.endsWith('.json')) {
         const isStremioResource = path.includes('/stream/') || path.includes('/meta/') || path.includes('/catalog/');
-        if (isStremioResource && !path.includes('/movie/')) {
+        const isMissingLanguageSlug = path.startsWith('/stream/') || path.startsWith('/meta/') || path.startsWith('/catalog/');
+        
+        if (isStremioResource && (!path.includes('/movie/') || isMissingLanguageSlug)) {
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Cache-Control', 'max-age=21600, stale-while-revalidate');
             
