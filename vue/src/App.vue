@@ -270,6 +270,44 @@ const methods = {
 // Lifecycle hook
 onMounted(() => {
     state.install = new Modal(installModal.value);
+
+    // Parse URL path to pre-fill configuration
+    const pathSegments = window.location.pathname.split('/').filter(Boolean);
+    
+    // Ignore the 'configure' segment if present
+    const configIndex = pathSegments.indexOf('configure');
+    if (configIndex !== -1) {
+        pathSegments.splice(configIndex, 1);
+    }
+
+    if (pathSegments.length > 0) {
+        let rpdbKey = '';
+        let langsStr = '';
+
+        if (pathSegments.length === 2) {
+            rpdbKey = pathSegments[0];
+            langsStr = pathSegments[1];
+        } else if (pathSegments.length === 1) {
+            const segment = pathSegments[0];
+            // Check if it's a language string by testing against valid languages
+            const hasValidLang = segment.split(',').some(lang => state.languages.includes(lang.toLowerCase()));
+            if (hasValidLang || segment.includes(',')) {
+                langsStr = segment;
+            } else {
+                rpdbKey = segment;
+            }
+        }
+
+        if (rpdbKey) {
+            state.RPDBkey.key = rpdbKey;
+            methods.ValidateRPDB();
+        }
+
+        if (langsStr) {
+            const requestedLangs = langsStr.split(',');
+            state.SelectedLanguages = requestedLangs.filter(lang => state.languages.includes(lang.toLowerCase()));
+        }
+    }
 });
 </script>
 
