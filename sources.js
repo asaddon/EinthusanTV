@@ -378,7 +378,7 @@ const decompressData = (data) => {
 // Create axios instance with optimized settings
 const client = wrapper(axios.create({
     baseURL: config.BaseURL, // Replace with your base URL
-    timeout: 5000, // Reduced to 5 seconds to prevent Stremio 15s abort compounding
+    timeout: 10000, // Increased to 10 seconds to handle slow Einthusan response times
     headers: {
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive'
