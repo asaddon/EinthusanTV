@@ -31,7 +31,7 @@ app.use((req, res, next) => {
     
     const isAllowed = 
         path.startsWith('/status') ||
-        path.startsWith('/configure') ||
+        path.includes('/configure') ||
         path.startsWith('/assets') ||
         path.endsWith('.json') ||
         path === '/favicon.ico' ||
