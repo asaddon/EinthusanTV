@@ -242,13 +242,13 @@ app.get('/:rpdbKey?/:configuration/manifest.json', (req, res) => {
                 localizedManifest.catalogs.push({
                     type: "movie",
                     id: lang,
-                    name: `Search - ${capitalizeFirstLetter(lang)}`,
+                    name: `EinthusanTV - Search - ${capitalizeFirstLetter(lang)}`,
                     extra: [{ name: "search", isRequired: true }]
                 });
                 localizedManifest.catalogs.push({
                     type: "movie",
                     id: `${lang}_board`,
-                    name: `Newly Added - ${capitalizeFirstLetter(lang)}`,
+                    name: `EinthusanTV - Latest - ${capitalizeFirstLetter(lang)}`,
                     extra: [{ name: "skip", isRequired: false }]
                 });
             }
