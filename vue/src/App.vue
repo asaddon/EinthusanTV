@@ -23,13 +23,18 @@
                         </button>
                     </div>
                     <!-- Modal body -->
-                    <div class="p-6 space-y-6 text-center">
+                    <div class="p-6 space-y-4 text-center">
                         <p class="text-sm leading-relaxed text-gray-300">
-                            If you enjoy this addon and want to support future updates,<br>please consider donating!
+                            Stremio should automatically open and prompt you to install.<br>
+                            If it doesn't, click "Copy Link" below and paste it into Stremio's search bar.
                         </p>
-                        <div class="flex flex-col sm:flex-row items-center justify-center gap-6 mt-4">
-                            <a href='https://ko-fi.com/W7W2166YEP' target='_blank' class="hover:scale-105 transition-transform">
-                                <img src='https://storage.ko-fi.com/cdn/kofi3.png?v=3' class="h-10 shadow-lg rounded-lg" alt='Buy Me a Coffee' />
+                        
+                        <div class="mt-4 p-4 bg-gradient-to-r from-gray-800/80 to-gray-900/80 rounded-2xl border border-pink-500/20 shadow-lg inline-block max-w-sm">
+                            <h3 class="text-sm font-bold text-gray-200 mb-3 flex items-center justify-center">
+                                <span class="mr-2">❤️</span> Support Server Costs
+                            </h3>
+                            <a href='https://ko-fi.com/W7W2166YEP' target='_blank' class="inline-block hover:scale-105 transition-transform duration-300">
+                                <img src='https://storage.ko-fi.com/cdn/kofi3.png?v=3' class="h-10 shadow-[0_0_15px_rgba(236,72,153,0.3)] rounded-lg" alt='Buy Me a Coffee' />
                             </a>
                         </div>
                     </div>
@@ -156,6 +161,19 @@
                         class="w-full sm:w-auto min-w-[250px] text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-4 focus:ring-purple-800 font-bold rounded-2xl text-lg px-8 py-4 shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:shadow-[0_0_45px_rgba(236,72,153,0.6)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transition-all duration-300 transform hover:-translate-y-1">
                         Install Addon
                     </button>
+
+                    <!-- Server Support CTA -->
+                    <div class="mt-8 p-5 bg-gradient-to-r from-gray-800/80 to-gray-900/80 rounded-2xl border border-pink-500/20 shadow-lg max-w-lg mx-auto">
+                        <h3 class="text-sm font-bold text-gray-200 mb-2 flex items-center justify-center">
+                            <span class="mr-2">❤️</span> Support Server Costs
+                        </h3>
+                        <p class="text-xs text-gray-400 mb-4 max-w-sm mx-auto leading-relaxed">
+                            EinthusanTV is entirely free, but high-speed server bandwidth is expensive. If this addon helps you, please consider donating a coffee to keep the servers alive!
+                        </p>
+                        <a href='https://ko-fi.com/W7W2166YEP' target='_blank' class="inline-block hover:scale-105 transition-transform duration-300">
+                            <img src='https://storage.ko-fi.com/cdn/kofi3.png?v=3' class="h-10 shadow-[0_0_15px_rgba(236,72,153,0.3)] rounded-lg" alt='Buy Me a Coffee' />
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Footer Credits -->
