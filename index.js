@@ -215,12 +215,22 @@ function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
+// Intercept buggy Stremio clients that append /configure/manifest.json
+app.get('*/configure/manifest.json', (req, res) => {
+    return res.redirect(301, req.originalUrl.replace('/configure', ''));
+});
+
 // Serve manifest.json with optional RPDB key
 app.get('/:rpdbKey?/:configuration/manifest.json', (req, res) => {
     if (!res.headersSent) {
         res.setHeader('Cache-Control', 'max-age=86400, stale-while-revalidate');
         res.setHeader('Content-Type', 'application/json');
-        const { rpdbKey, configuration } = req.params;
+        let { rpdbKey, configuration } = req.params;
+
+        // Clean rogue .json extensions from configuration (e.g., /hindi.json/manifest.json)
+        if (configuration.endsWith('.json')) {
+            configuration = configuration.replace('.json', '');
+        }
 
         const requestedLangs = configuration.split(',');
         const validLangs = requestedLangs.filter(lang => config.langs.includes(lang));
