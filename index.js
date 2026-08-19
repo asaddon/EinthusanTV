@@ -24,6 +24,11 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
     const path = req.path;
     
+    // Instantly drop automated vulnerability scanners
+    if (path.endsWith('.php') || path.endsWith('.env') || path.includes('.git') || path.includes('admin')) {
+        return res.status(403).send('Forbidden');
+    }
+    
     const isAllowed = 
         path.startsWith('/status') ||
         path.startsWith('/configure') ||
