@@ -287,7 +287,8 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
         const requestedLangs = configuration.split(',');
 
         if (!config.langs.includes(catalogId) || !requestedLangs.includes(catalogId)) {
-            return res.status(400).send({ error: "Invalid catalog ID or language not installed" });
+            // Silently return empty metas instead of a 400 error to prevent Stremio from showing red 'Failed to fetch' toasts
+            return res.json({ metas: [] });
         }
 
         const searchParams = extra ? new URLSearchParams(extra) : null;
