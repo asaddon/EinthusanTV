@@ -183,6 +183,17 @@
                         Original by <a href="https://github.com/dexter21767/" target="_blank" class="hover:text-white transition-colors">dexter21767</a>
                     </p>
                 </div>
+
+                <!-- Adsterra Native Banner Container -->
+                <div class="mt-10 p-5 bg-gray-800/40 rounded-2xl border border-gray-700/50 shadow-inner w-full max-w-2xl mx-auto backdrop-blur-sm">
+                    <div class="flex items-center justify-between mb-4 px-2">
+                        <span class="text-[10px] font-bold tracking-widest text-gray-500 uppercase">Sponsored</span>
+                        <span class="text-[10px] text-gray-600">Advertisement</span>
+                    </div>
+                    <div class="flex justify-center min-h-[100px] w-full rounded-xl overflow-hidden bg-black/20 relative">
+                        <div id="container-2b21be3a51dacce13e8ce95bbd1596e0" class="w-full z-10 relative"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -326,6 +337,15 @@ onMounted(() => {
             state.SelectedLanguages = requestedLangs.filter(lang => state.languages.includes(lang.toLowerCase()));
         }
     }
+
+    // Safely inject Adsterra Native Banner script after component is mounted
+    setTimeout(() => {
+        const adScript = document.createElement('script');
+        adScript.async = true;
+        adScript.dataset.cfasync = "false";
+        adScript.src = "https://pl30929066.effectivecpmnetwork.com/2b21be3a51dacce13e8ce95bbd1596e0/invoke.js";
+        document.body.appendChild(adScript);
+    }, 500);
 });
 </script>
 
@@ -387,5 +407,11 @@ h1 {
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
     background: #225C7D;
+}
+
+/* Force Adsterra Native Banner text to be readable on dark backgrounds */
+:deep(#container-2b21be3a51dacce13e8ce95bbd1596e0 *) {
+    color: #e5e7eb !important;
+    text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.8) !important;
 }
 </style>
