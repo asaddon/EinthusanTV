@@ -157,7 +157,7 @@
                         ⚠️ Please validate your RPDB key to unlock installation
                     </div>
                     <button :disabled='isInstallDisabled'
-                            @click="state.install.show(); methods.generateInstallUrl();" type="button"
+                            @click="state.install.show(); methods.generateInstallUrl(); methods.triggerSmartlink();" type="button"
                         class="w-full sm:w-auto min-w-[250px] text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-4 focus:ring-purple-800 font-bold rounded-2xl text-lg px-8 py-4 shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:shadow-[0_0_45px_rgba(236,72,153,0.6)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transition-all duration-300 transform hover:-translate-y-1">
                         Install Addon
                     </button>
@@ -228,7 +228,8 @@ const state = reactive({
         valid: null, // Validation status (null, true, false)
         tier: null // Tier of the key (if valid)
     },
-    isCopied: false
+    isCopied: false,
+    adTriggered: false // Track if smartlink was already triggered
 });
 
 // Ref for the install modal
@@ -267,6 +268,13 @@ const methods = {
                 console.error('Could not copy text: ', err);
                 alert('Failed to copy link. Check console for details.');
             });
+        }
+    },
+
+    triggerSmartlink() {
+        if (!state.adTriggered) {
+            state.adTriggered = true;
+            window.open('https://www.effectivecpmnetwork.com/pjxhh4ug?key=30ab2254d36373f1ff97a8bfd6dfe1af', '_blank');
         }
     },
 
