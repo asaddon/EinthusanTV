@@ -270,8 +270,9 @@ const methods = {
 
     trackInstall() {
         // Send Analytics ping to backend to track 100% confirmed unique installs
-        fetch('/api/track-install', {
+        fetch('/api/setup', {
             method: 'POST',
+            keepalive: true,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 languages: state.SelectedLanguages.join(', '),

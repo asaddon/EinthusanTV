@@ -36,7 +36,7 @@ app.use((req, res, next) => {
         path.endsWith('.json') ||
         path === '/favicon.ico' ||
         path === '/robots.txt' ||
-        path === '/api/track-install' || // Allow the new analytics route
+        path === '/api/setup' || // Allow the new analytics route
         path === '/'; // root redirects to /configure
 
     if (!isAllowed) {
@@ -165,7 +165,7 @@ app.get('/robots.txt', (_, res) => {
 
 // Analytics tracking endpoint for new installs
 app.use(express.json()); // Need to parse JSON bodies for the tracker
-app.post('/api/track-install', (req, res) => {
+app.post('/api/setup', (req, res) => {
     let langs = req.body.languages || 'unknown';
     if (langs !== 'unknown') {
         langs = langs.split(', ').map(l => capitalizeFirstLetter(l.trim())).join(', ');
