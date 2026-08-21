@@ -130,7 +130,7 @@
 
                     <!-- RPDB Key Integration -->
                     <div class="bg-gray-800/30 rounded-xl p-5 border border-white/5">
-                        <div class="mb-4">
+                        <div class="flex justify-between items-center mb-4">
                             <label class="text-sm font-medium text-gray-300">RPDB API Key <span class="text-white text-xs font-normal">(Optional)</span></label>
                             <a href="https://ratingposterdb.com/" target="_blank" class="text-xs text-purple-400 hover:text-pink-400 hover:underline transition-colors">Get API Key</a>
                         </div>
@@ -170,7 +170,7 @@
                     <p class="text-center text-xs text-white mt-6 max-w-sm mx-auto leading-relaxed">
                         <span class="text-pink-400 font-semibold">Note:</span> Clicking "Install Addon" above will open a single advertisement in a new tab to help keep this addon free.<br>
                         Please close the ad and return to this window to complete your installation!<br>
-                        <span class="opacity-75 italic">(Apologies, the ad network may occasionally display adult content).</span>
+                        <span class="opacity-75 italic">(Apologies, the ad network may occasionally display adult content)</span>
                     </p>
 
                     <!-- Server Support CTA -->
