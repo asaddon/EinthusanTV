@@ -116,8 +116,8 @@
                 <!-- Form Controls -->
                 <div class="space-y-6">
                     <!-- Language Selection -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Languages <span class="text-gray-500 text-xs font-normal">(You can select multiple)</span></label>
+                    <div class="mb-8">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Languages <span class="text-white text-xs font-normal">(You can select multiple)</span></label>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <label v-for="language in state.languages" :key="language" class="cursor-pointer">
                                 <input type="checkbox" :value="language" v-model="state.SelectedLanguages" @change="methods.selectLang()" class="peer sr-only">
@@ -130,9 +130,9 @@
 
                     <!-- RPDB Key Integration -->
                     <div class="bg-gray-800/30 rounded-xl p-5 border border-white/5">
-                        <div class="flex justify-between items-center mb-2">
-                            <label class="text-sm font-medium text-gray-300">RPDB API Key <span class="text-gray-500 text-xs font-normal">(Optional)</span></label>
-                            <a href="https://ratingposterdb.com/api-key/" target="_blank" class="text-xs text-purple-400 hover:text-pink-400 hover:underline transition-colors">Get API Key</a>
+                        <div class="mb-4">
+                            <label class="text-sm font-medium text-gray-300">RPDB API Key <span class="text-white text-xs font-normal">(Optional)</span></label>
+                            <a href="https://ratingposterdb.com/" target="_blank" class="text-xs text-purple-400 hover:text-pink-400 hover:underline transition-colors">Get API Key</a>
                         </div>
                         
                         <form @submit.prevent="methods.ValidateRPDB" class="flex flex-col sm:flex-row gap-3">
@@ -167,7 +167,7 @@
                         class="w-full sm:w-auto min-w-[250px] text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-4 focus:ring-purple-800 font-bold rounded-2xl text-lg px-8 py-4 shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:shadow-[0_0_45px_rgba(236,72,153,0.6)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transition-all duration-300 transform hover:-translate-y-1">
                         Install Addon
                     </button>
-                    <p class="mt-4 text-xs text-gray-400 max-w-sm mx-auto leading-relaxed">
+                    <p class="text-center text-xs text-white mt-6 max-w-sm mx-auto leading-relaxed">
                         <span class="text-pink-400 font-semibold">Note:</span> Clicking "Install Addon" above will open a single advertisement in a new tab to help keep this addon free.<br>
                         Please close the ad and return to this window to complete your installation!<br>
                         <span class="opacity-75 italic">(Apologies, the ad network may occasionally display adult content).</span>
@@ -188,7 +188,7 @@
                 </div>
 
                 <!-- Footer Credits -->
-                <div class="mt-12 text-center text-xs text-gray-400 space-y-1">
+                <div class="mt-12 text-center text-xs text-white space-y-1">
                     <p>Recreated by <a href="https://github.com/asaddon" target="_blank" class="text-purple-400 hover:text-pink-400 font-semibold transition-colors">asaddon</a></p>
                     <p class="opacity-60">
                         Original by <a href="https://github.com/dexter21767/" target="_blank" class="hover:text-white transition-colors">dexter21767</a>
@@ -198,8 +198,8 @@
                 <!-- Adsterra Native Banner Container -->
                 <div class="mt-10 p-5 bg-gray-800/40 rounded-2xl border border-gray-700/50 shadow-inner w-full max-w-2xl mx-auto backdrop-blur-sm">
                     <div class="flex items-center justify-between mb-4 px-2">
-                        <span class="text-[10px] font-bold tracking-widest text-gray-500 uppercase">Sponsored</span>
-                        <span class="text-[10px] text-gray-600">Advertisement</span>
+                        <span class="text-[10px] font-bold tracking-widest text-white uppercase">Sponsored</span>
+                        <span class="text-[10px] text-white">Advertisement</span>
                     </div>
                     <div class="flex justify-center min-h-[100px] w-full rounded-xl overflow-hidden bg-black/20 relative">
                         <div id="container-2b21be3a51dacce13e8ce95bbd1596e0" class="w-full z-10 relative"></div>
