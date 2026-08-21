@@ -4,7 +4,7 @@
     "name": "EinthusanTV",
     "description": "Addon for Streaming from EinthusanTV by Asaddon",
     "logo": "https://i.imgur.com/hmTKdwR.png",
-	"background":"https://raw.githubusercontent.com/Stremio/stremio-art/main/originals/Ahlen%20Ken%20A.%20Batalon.png",
+	"background":"https://raw.githubusercontent.com/asaddon/EinthusanTV/refs/heads/main/new_background.jpg",
     "catalogs": [],
     "resources": ["stream","catalog","meta"],
     "types": ["movie"],

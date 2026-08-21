@@ -69,7 +69,7 @@
         <div class="relative min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 bg-no-repeat bg-cover bg-center font-sans"
             :style="`background-image: url(${manifest.background});`">
             <!-- Dark/Blur Overlay -->
-            <div class="absolute inset-0 bg-black/70 backdrop-blur-sm z-0"></div>
+            <div class="absolute inset-0 bg-black/20 z-0"></div>
             
             <!-- Glassmorphic Container -->
             <div class="relative z-10 w-full max-w-2xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] rounded-3xl p-8 sm:p-12">
@@ -77,7 +77,7 @@
                 <!-- Header -->
                 <div class="flex flex-col items-center text-center mb-8">
                     <img class="h-24 w-24 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] mb-4" :src="manifest.logo" alt="Logo">
-                    <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 tracking-tight">
+                    <h1 class="text-4xl font-extrabold text-white tracking-tight drop-shadow-sm">
                         {{ manifest.name }}
                     </h1>
                     <span class="mt-2 px-3 py-1 text-xs font-semibold text-purple-200 bg-purple-900/40 rounded-full border border-purple-500/30">
@@ -381,13 +381,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-h1 {
-    font-weight: bold;
-    font-size: x-large;
-    text-align: center;
-    color: black;
-    padding-top: 10px;
-}
+
 
 .logo {
     margin: auto;
