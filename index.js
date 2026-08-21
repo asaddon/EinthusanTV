@@ -248,10 +248,7 @@ app.get('/:rpdbKey?/:configuration/manifest.json', (req, res) => {
         const requestedLangs = configuration.split(',');
         const validLangs = requestedLangs.filter(lang => config.langs.includes(lang));
 
-        const langShortcodes = {
-            hindi: 'HI', tamil: 'TA', telugu: 'TE', malayalam: 'ML',
-            kannada: 'KN', bengali: 'BN', marathi: 'MR', punjabi: 'PA'
-        };
+
 
         if (validLangs.length > 0) {
             manifest.behaviorHints.configurationRequired = false;
@@ -259,10 +256,12 @@ app.get('/:rpdbKey?/:configuration/manifest.json', (req, res) => {
             
             if (validLangs.length === 1) {
                 localizedManifest.name = `EinthusanTV - ${capitalizeFirstLetter(validLangs[0])}`;
-            } else {
-                const shortcodes = validLangs.map(l => langShortcodes[l] || capitalizeFirstLetter(l).substring(0, 2)).join(', ');
-                localizedManifest.name = `EinthusanTV - ${shortcodes}`;
             }
+            let descriptionAddon = ` | Languages: ${validLangs.map(capitalizeFirstLetter).join(', ')}`;
+            if (rpdbKey) {
+                descriptionAddon += ` | RPDB: ${rpdbKey}`;
+            }
+            localizedManifest.description = `${manifest.description}${descriptionAddon}`;
             
             localizedManifest.catalogs = [];
             
