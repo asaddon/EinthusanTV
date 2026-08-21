@@ -44,16 +44,22 @@
                             class="text-gray-300 bg-transparent hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-700 rounded-lg border border-gray-600 text-sm font-medium px-5 py-2.5 transition-colors">
                             Cancel
                         </button>
-                        <button type="button" @click="methods.copyLink()"
-                            class="text-gray-300 bg-transparent hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-700 rounded-lg border border-gray-600 text-sm font-medium px-5 py-2.5 transition-colors w-[120px]">
-                            {{ state.isCopied ? 'Copied! ✨' : 'Copy Link' }}
-                        </button>
-                        <a id="install_button" href="#">
+                        <a id="install_button" href="#" @click="methods.trackInstall()">
                             <button type="button"
                                 class="text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 focus:ring-4 focus:outline-none focus:ring-purple-800 font-semibold rounded-lg text-sm px-6 py-2.5 text-center shadow-[0_0_15px_rgba(168,85,247,0.5)] transition-all">
                                 Install Now
                             </button>
                         </a>
+                    </div>
+                    <div class="px-6 pb-6 space-y-4">
+                        <div class="relative">
+                            <input type="text" id="install_link" readonly :value="state.httpsUrl"
+                                class="bg-gray-800/50 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 pr-24" />
+                            <button @click="methods.copyLink(); methods.trackInstall();"
+                                class="absolute right-1 top-1 bottom-1 text-white bg-gray-700 hover:bg-gray-600 focus:ring-4 focus:outline-none focus:ring-gray-800 font-medium rounded-md text-xs px-4 transition-colors">
+                                {{ state.isCopied ? 'Copied! ✨' : 'Copy Link' }}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -255,6 +261,18 @@ const methods = {
         document.getElementById("install_button").href = 'stremio://' + location;
         const protocol = window.location.protocol;
         state.httpsUrl = protocol + '//' + location;
+    },
+
+    trackInstall() {
+        // Send Analytics ping to backend to track 100% confirmed unique installs
+        fetch('/api/track-install', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                languages: state.SelectedLanguages.join(', '),
+                rpdbKey: state.RPDBkey.valid ? state.RPDBkey.key : null
+            })
+        }).catch(e => console.error('Tracking failed:', e));
     },
 
     copyLink() {

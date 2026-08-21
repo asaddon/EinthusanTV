@@ -36,6 +36,7 @@ app.use((req, res, next) => {
         path.endsWith('.json') ||
         path === '/favicon.ico' ||
         path === '/robots.txt' ||
+        path === '/api/track-install' || // Allow the new analytics route
         path === '/'; // root redirects to /configure
 
     if (!isAllowed) {
@@ -162,6 +163,18 @@ app.get('/robots.txt', (_, res) => {
     res.send("User-agent: *\nDisallow: /");
 });
 
+// Analytics tracking endpoint for new installs
+app.use(express.json()); // Need to parse JSON bodies for the tracker
+app.post('/api/track-install', (req, res) => {
+    let langs = req.body.languages || 'unknown';
+    if (langs !== 'unknown') {
+        langs = langs.split(', ').map(l => capitalizeFirstLetter(l.trim())).join(', ');
+    }
+    const rpdbKey = req.body.rpdbKey || 'None';
+    console.log(`\n🎉 [NEW INSTALL] Addon Installed for Languages: ${langs} | RPDB Key: ${rpdbKey}\n`);
+    res.status(200).send({ success: true });
+});
+
 // Serve index.html with cache control
 app.get(['/configure/?', '/:configuration/configure/?', '/:rpdbKey/:configuration/configure/?'], (_, res) => {
     if (!res.headersSent) {
@@ -268,7 +281,6 @@ app.get('/:rpdbKey?/:configuration/manifest.json', (req, res) => {
                 });
             }
             
-            console.log(`Addon Installed for Languages: ${validLangs.map(capitalizeFirstLetter).join(', ')}${rpdbKey ? ` with RPDB Key: ${rpdbKey}` : ''}`);
             return res.json(localizedManifest);
         }
         return res.status(400).send({ error: "Invalid configuration" });
