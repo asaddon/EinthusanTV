@@ -25,8 +25,8 @@
                     <!-- Modal body -->
                     <div class="p-6 space-y-4 text-center">
                         <p class="text-sm leading-relaxed text-gray-300">
-                            Stremio should automatically open and prompt you to install.<br>
-                            If it doesn't, click "Copy Link" below and paste it into Stremio's search bar.
+                            Click <b>Install Now</b> below to automatically open Stremio and prompt the installation.<br>
+                            If it doesn't work, click <b>Copy Link</b> and paste it into Stremio's search bar.
                         </p>
                         
                         <div class="mt-4 p-4 bg-gradient-to-r from-gray-800/80 to-gray-900/80 rounded-2xl border border-pink-500/20 shadow-lg inline-block max-w-sm">
@@ -167,6 +167,11 @@
                         class="w-full sm:w-auto min-w-[250px] text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-4 focus:ring-purple-800 font-bold rounded-2xl text-lg px-8 py-4 shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:shadow-[0_0_45px_rgba(236,72,153,0.6)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transition-all duration-300 transform hover:-translate-y-1">
                         Install Addon
                     </button>
+                    <p class="mt-4 text-xs text-gray-400 max-w-sm mx-auto leading-relaxed">
+                        <span class="text-pink-400 font-semibold">Note:</span> Clicking "Install Addon" above will open a single advertisement in a new tab to help keep this addon free.<br>
+                        Please close the ad and return to this window to complete your installation!<br>
+                        <span class="opacity-75 italic">(Apologies, the ad network may occasionally display adult content).</span>
+                    </p>
 
                     <!-- Server Support CTA -->
                     <div class="mt-8 p-5 bg-gradient-to-r from-gray-800/80 to-gray-900/80 rounded-2xl border border-pink-500/20 shadow-lg max-w-lg mx-auto">
