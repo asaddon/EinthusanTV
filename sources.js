@@ -624,10 +624,14 @@ async function ttnumberToTitle(ttNumber, retries = 1) {
     const fetchPromise = (async () => {
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
+                // Check TMDB First (will hit 0ms cache if previously checked)
+                const tmdbMeta = await getTMDBMeta(ttNumber);
+                if (tmdbMeta && tmdbMeta.title) return tmdbMeta.title;
+
                 let title = await fetchFromCinemeta(ttNumber) || 
                             await fetchFromIMDbApi(ttNumber);
                 if (title) return title;
-                throw new Error('No title found on IMDb API or Cinemeta');
+                throw new Error('No title found on TMDB, IMDb API or Cinemeta');
             } catch (err) {
                 if (attempt < retries) {
                     await sleep(2000);
@@ -680,14 +684,18 @@ async function fetchFromCinemeta(ttNumber) {
     }
 }
 
-async function isIndianCinemaTMDB(ttNumber) {
+async function getTMDBMeta(ttNumber) {
     const apiKey = process.env.TMDB_API_KEY;
-    if (!apiKey) return true; // If no API key, gracefully fallback to true (proceed with scrape)
+    if (!apiKey) return { isIndian: true, title: null }; // Graceful fallback
 
-    const cacheKey = `tmdb_is_indian_${ttNumber}`;
+    const cacheKey = `tmdb_meta_${ttNumber}`;
     const cached = await cache.get(cacheKey);
     if (cached !== undefined && cached !== null) {
-        return cached.toString() === '1'; 
+        const cachedStr = cached.toString();
+        if (cachedStr === '0') {
+            return { isIndian: false, title: null };
+        }
+        return { isIndian: true, title: cachedStr === '1' ? null : cachedStr };
     }
 
     try {
@@ -696,20 +704,29 @@ async function isIndianCinemaTMDB(ttNumber) {
         
         const movieResults = response.data.movie_results || [];
         if (movieResults.length === 0) {
-            // Not found on TMDB. Default to true to be safe.
-            return true;
+            return { isIndian: true, title: null }; // Safe default
         }
 
         const allowedLangs = ['hi', 'ta', 'te', 'ml', 'kn', 'bn', 'mr', 'pa', 'ur'];
         const isIndian = allowedLangs.includes(movieResults[0].original_language);
+        const title = movieResults[0].title || movieResults[0].original_title || null;
         
-        // Cache for 30 days
-        await cache.set(cacheKey, isIndian ? '1' : '0', 30 * 24 * 60 * 60);
-        return isIndian;
+        // Space-saving cache: cache '0' for non-Indian, cache Title (or '1') for Indian
+        if (isIndian) {
+            await cache.set(cacheKey, title || '1', 30 * 24 * 60 * 60);
+        } else {
+            await cache.set(cacheKey, '0', 30 * 24 * 60 * 60);
+        }
+
+        return { isIndian, title };
     } catch (err) {
-        // Graceful fallback on TMDB timeout/error
-        return true; 
+        return { isIndian: true, title: null }; // Graceful fallback
     }
+}
+
+async function isIndianCinemaTMDB(ttNumber) {
+    const tmdbMeta = await getTMDBMeta(ttNumber);
+    return tmdbMeta.isIndian;
 }
 
 async function fetchFromIMDbPage(ttNumber) {
