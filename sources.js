@@ -680,6 +680,38 @@ async function fetchFromCinemeta(ttNumber) {
     }
 }
 
+async function isIndianCinemaTMDB(ttNumber) {
+    const apiKey = process.env.TMDB_API_KEY;
+    if (!apiKey) return true; // If no API key, gracefully fallback to true (proceed with scrape)
+
+    const cacheKey = `tmdb_is_indian_${ttNumber}`;
+    const cached = await cache.get(cacheKey);
+    if (cached !== undefined && cached !== null) {
+        return cached.toString() === '1'; 
+    }
+
+    try {
+        const url = `https://api.themoviedb.org/3/find/${ttNumber}?external_source=imdb_id&api_key=${apiKey}`;
+        const response = await axios.get(url, { timeout: 4000 });
+        
+        const movieResults = response.data.movie_results || [];
+        if (movieResults.length === 0) {
+            // Not found on TMDB. Default to true to be safe.
+            return true;
+        }
+
+        const allowedLangs = ['hi', 'ta', 'te', 'ml', 'kn', 'bn', 'mr', 'pa', 'ur'];
+        const isIndian = allowedLangs.includes(movieResults[0].original_language);
+        
+        // Cache for 30 days
+        await cache.set(cacheKey, isIndian ? '1' : '0', 30 * 24 * 60 * 60);
+        return isIndian;
+    } catch (err) {
+        // Graceful fallback on TMDB timeout/error
+        return true; 
+    }
+}
+
 async function fetchFromIMDbPage(ttNumber) {
     const imdbUrl = `https://www.imdb.com/title/${ttNumber}/`;
     try {
@@ -1304,6 +1336,7 @@ module.exports = {
     getAllRecentMovies,
     fetchRecentMoviesForAllLanguages,
     meta,
+    isIndianCinemaTMDB,
     initializeClientWithSession,
     decompressData,
     preloadFromKV,

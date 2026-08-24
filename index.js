@@ -368,6 +368,14 @@ app.get('/:rpdbKey?/:configuration/stream/movie/:id/:extra?.json', async (req, r
         const requestedLangs = configuration.split(',');
         let allStreams = [];
 
+        if (id.startsWith("tt")) {
+            const isIndian = await sources.isIndianCinemaTMDB(id);
+            if (!isIndian) {
+                // Instantly drop non-Indian movie requests, saving Einthusan scrapes
+                return res.json({ streams: [] });
+            }
+        }
+
         if (id.startsWith("einthusan") || id.startsWith("tt")) {
             for (const lang of requestedLangs) {
                 if (config.langs.includes(lang)) {
