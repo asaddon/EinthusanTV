@@ -378,7 +378,7 @@ const decompressData = (data) => {
 // Create axios instance with optimized settings
 const client = wrapper(axios.create({
     baseURL: config.BaseURL, // Replace with your base URL
-    timeout: 10000, // Increased to 10 seconds to handle slow Einthusan response times
+    timeout: 30000, // Increased to 30 seconds to handle slow Einthusan response times under load
     headers: {
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive'
@@ -654,7 +654,7 @@ async function ttnumberToTitle(ttNumber, retries = 1) {
 async function fetchFromIMDbApi(ttNumber) {
     const imdbApiUrl = `https://v2.sg.media-imdb.com/suggestion/t/${ttNumber}.json`;
     try {
-        const imdbResponse = await axios.get(imdbApiUrl, { timeout: 4000 });
+        const imdbResponse = await axios.get(imdbApiUrl, { timeout: 10000 });
         const media = imdbResponse.data.d.find(item => item.id === ttNumber);
         
         // Reject if it is a TV series
@@ -672,7 +672,7 @@ async function fetchFromIMDbApi(ttNumber) {
 async function fetchFromCinemeta(ttNumber) {
     const cinemetaApiUrl = `https://v3-cinemeta.strem.io/meta/movie/${ttNumber}.json`;
     try {
-        const cinemetaResponse = await axios.get(cinemetaApiUrl, { timeout: 4000 });
+        const cinemetaResponse = await axios.get(cinemetaApiUrl, { timeout: 10000 });
         return cinemetaResponse.data.meta?.name || null;
     } catch (err) {
         //console.warn(`Cinemeta API failed: ${err.message}`);
@@ -684,7 +684,7 @@ async function fetchFromIMDbPage(ttNumber) {
     const imdbUrl = `https://www.imdb.com/title/${ttNumber}/`;
     try {
         const imdbPageResponse = await axios.get(imdbUrl, {
-            timeout: 10000,
+            timeout: 20000,
             headers: { 'User-Agent': 'Mozilla/5.0' },
         });
         const $ = cheerio.load(imdbPageResponse.data);
@@ -1005,7 +1005,7 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
             const pageUrl = `/movie/results/?find=Recent&lang=${lang}&page=${page}`;
 
             try {
-                const response = await requestQueue.add(() => client.get(pageUrl, { timeout: 10000 })); // Increased timeout to 10 seconds
+                const response = await requestQueue.add(() => client.get(pageUrl, { timeout: 30000 })); // Increased timeout to 30 seconds
                 if (response.status === 200) {
                     const body = response.data;
                     if (body.includes('<title>Rate Limited - Einthusan</title>')) {
