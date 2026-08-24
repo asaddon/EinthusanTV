@@ -6,7 +6,15 @@
     "logo": "https://i.imgur.com/hmTKdwR.png",
 	"background":"https://raw.githubusercontent.com/asaddon/EinthusanTV/refs/heads/main/new_background.jpg",
     "catalogs": [],
-    "resources": ["stream","catalog","meta"],
+    "resources": [
+        "stream",
+        "catalog",
+        {
+            "name": "meta",
+            "types": ["movie"],
+            "idPrefixes": ["einthusan"]
+        }
+    ],
     "types": ["movie"],
     "idPrefixes": ["tt","einthusan"],
     "behaviorHints": {

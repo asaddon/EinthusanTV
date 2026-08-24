@@ -399,7 +399,7 @@ app.get('/:rpdbKey?/:configuration/meta/movie/:id/:extra?.json', async (req, res
         const requestedLangs = configuration.split(',');
         let meta;
 
-        if (id.startsWith("einthusan") || id.startsWith("tt")) {
+        if (id.startsWith("einthusan")) {
             for (const lang of requestedLangs) {
                 if (config.langs.includes(lang)) {
                     const result = await sources.meta(id, lang);
