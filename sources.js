@@ -154,6 +154,10 @@ const _catalogStore = {}; // e.g. { hindi_15: [...movies] }
 const _idMapStore = {}; // e.g. { hindi: { tt1234567: "ABCD" }, ... }
 const _idMapDirty = {}; // tracks which languages need a KV flush
 
+// In-process TMDB Meta store (pure RAM, flushed to KV periodically)
+let _tmdbMetaStore = {}; // e.g. { "tt1234567": "0", "tt7654321": "Jawan" }
+let _tmdbMetaDirty = false;
+
 function getCatalogFromStore(lang, maxPages) {
     return _catalogStore[`${lang}_${maxPages}`] || null;
 }
@@ -200,6 +204,19 @@ async function preloadFromKV() {
             console.error(`Failed to preload ${lang} from KV:`, e.message);
         }
     }
+
+    try {
+        const tmdbCached = await cache.get("tmdb_meta_map");
+        if (tmdbCached) {
+            const decompressed = decompressData(tmdbCached);
+            if (decompressed && typeof decompressed === 'object') {
+                _tmdbMetaStore = decompressed;
+            }
+        }
+    } catch (e) {
+        console.error(`Failed to preload tmdb_meta_map from KV:`, e.message);
+    }
+
     console.info('Startup preload from KV complete.');
 }
 
@@ -245,6 +262,16 @@ async function forceFlushIdMaps() {
             } catch (e) {
                 console.error(`Failed to flush id_map for ${lang}:`, e.message);
             }
+        }
+    }
+
+    if (_tmdbMetaDirty) {
+        try {
+            await cache.set("tmdb_meta_map", compressData(_tmdbMetaStore));
+            _tmdbMetaDirty = false;
+            console.log(`Successfully flushed tmdb_meta_map to KV.`);
+        } catch (e) {
+            console.error(`Failed to flush tmdb_meta_map:`, e.message);
         }
     }
 }
@@ -688,10 +715,8 @@ async function getTMDBMeta(ttNumber) {
     const apiKey = process.env.TMDB_API_KEY;
     if (!apiKey) return { isIndian: true, title: null }; // Graceful fallback
 
-    const cacheKey = `tmdb_meta_${ttNumber}`;
-    const cached = await cache.get(cacheKey);
-    if (cached !== undefined && cached !== null) {
-        const cachedStr = cached.toString();
+    const cachedStr = _tmdbMetaStore[ttNumber];
+    if (cachedStr !== undefined) {
         if (cachedStr === '0') {
             return { isIndian: false, title: null };
         }
@@ -711,12 +736,9 @@ async function getTMDBMeta(ttNumber) {
         const isIndian = allowedLangs.includes(movieResults[0].original_language);
         const title = movieResults[0].title || movieResults[0].original_title || null;
         
-        // Space-saving cache: cache '0' for non-Indian, cache Title (or '1') for Indian
-        if (isIndian) {
-            await cache.set(cacheKey, title || '1', 30 * 24 * 60 * 60);
-        } else {
-            await cache.set(cacheKey, '0', 30 * 24 * 60 * 60);
-        }
+        // Save to in-memory batch store, setting dirty flag
+        _tmdbMetaStore[ttNumber] = isIndian ? (title || '1') : '0';
+        _tmdbMetaDirty = true;
 
         return { isIndian, title };
     } catch (err) {
