@@ -39,6 +39,8 @@ app.use((req, res, next) => {
         path === '/api/setup' || // Allow the new analytics route
         path === '/kv-dashboard' ||
         path === '/api/kv-stats' ||
+        path === '/einthusan-gate' ||
+        path === '/api/gate-auth' ||
         path === '/'; // root redirects to /configure
 
     if (!isAllowed) {
@@ -78,25 +80,49 @@ app.use(swStats.getMiddleware({
     }
 }));
 
-// Custom KV Dashboard & Telemetry Endpoint (Secured by Basic Auth)
-const basicAuth = (req, res, next) => {
-    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
-    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+// In-Memory Session Store
+const activeSessions = new Set();
+
+app.use('/api/gate-auth', express.json());
+
+// Custom KV Dashboard & Telemetry Endpoint (Secured by Cookie Auth)
+const cookieAuth = (req, res, next) => {
+    const cookieHeader = req.headers.cookie || '';
+    const cookies = Object.fromEntries(cookieHeader.split('; ').map(c => c.split('=')));
+    
+    if (cookies.auth_token && activeSessions.has(cookies.auth_token)) {
+        return next();
+    }
+    
+    if (req.path.startsWith('/api/')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    return res.redirect('/einthusan-gate');
+};
+
+app.post('/api/gate-auth', (req, res) => {
+    const { username, password } = req.body || {};
     const expectedUser = process.env.STATS_USERNAME || 'admin';
     const expectedPass = process.env.STATS_PASSWORD;
 
-    if (login && password && login === expectedUser && password === expectedPass) {
-        return next();
+    if (username && password && username === expectedUser && password === expectedPass) {
+        const token = require('crypto').randomBytes(32).toString('hex');
+        activeSessions.add(token);
+        res.setHeader('Set-Cookie', `auth_token=${token}; HttpOnly; Path=/; Max-Age=86400`);
+        return res.json({ success: true });
     }
-    res.set('WWW-Authenticate', 'Basic realm="401"');
-    res.status(401).send('Authentication required.');
-};
+    return res.status(401).json({ error: 'Invalid credentials' });
+});
 
-app.get('/kv-dashboard', basicAuth, (req, res) => {
+app.get('/einthusan-gate', (req, res) => {
+    res.sendFile(require('path').join(__dirname, 'public/login.html'));
+});
+
+app.get('/kv-dashboard', cookieAuth, (req, res) => {
     res.sendFile(require('path').join(__dirname, 'public/kv-dashboard.html'));
 });
 
-app.get('/api/kv-stats', basicAuth, (req, res) => {
+app.get('/api/kv-stats', cookieAuth, (req, res) => {
     res.json(sources.cache.getStats());
 });
 

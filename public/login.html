@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - EinthusanTV</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --error-red: #ef4444;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.2), transparent 30%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.2), transparent 30%);
+            overflow: hidden;
+        }
+
+        .login-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .login-card:hover {
+            transform: translateY(-5px);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 0.875rem 1rem;
+            color: var(--text-main);
+            font-size: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        button {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s ease, transform 0.1s ease;
+            margin-top: 1rem;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .error-msg {
+            color: var(--error-red);
+            font-size: 0.875rem;
+            text-align: center;
+            margin-top: 1rem;
+            min-height: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card" id="loginCard">
+        <h1>Welcome Back</h1>
+        <p class="subtitle">Authenticate to access KV Telemetry</p>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">USERNAME</label>
+                <input type="text" id="username" autocomplete="username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">PASSWORD</label>
+                <input type="password" id="password" autocomplete="current-password" required>
+            </div>
+            
+            <button type="submit" id="submitBtn">Sign In</button>
+            <div class="error-msg" id="errorMsg">Invalid credentials. Please try again.</div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            const card = document.getElementById('loginCard');
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            btn.innerText = 'Authenticating...';
+            btn.style.opacity = '0.7';
+            errorMsg.style.opacity = '0';
+
+            try {
+                const res = await fetch('/api/gate-auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (res.ok) {
+                    btn.innerText = 'Success!';
+                    btn.style.background = 'var(--accent-green)';
+                    setTimeout(() => {
+                        window.location.href = '/kv-dashboard';
+                    }, 500);
+                } else {
+                    throw new Error('Invalid credentials');
+                }
+            } catch (err) {
+                btn.innerText = 'Sign In';
+                btn.style.opacity = '1';
+                errorMsg.style.opacity = '1';
+                
+                // Trigger shake animation
+                card.classList.remove('shake');
+                void card.offsetWidth; // trigger reflow
+                card.classList.add('shake');
+            }
+        });
+    </script>
+</body>
+</html>
