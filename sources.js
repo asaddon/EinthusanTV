@@ -167,9 +167,21 @@ async function getCachedCatalog(lang, maxPages) {
     const storeHit = getCatalogFromStore(lang, maxPages);
     if (storeHit) return storeHit;
 
-    // 2. Check NodeCache/KV
-    const cacheKey = `recent_movies_${lang}_${maxPages}`;
-    const cached = await cache.get(cacheKey);
+    // 2. Check NodeCache/KV for new key
+    let cacheKey = `einthusan_catalog_movies_${lang}`;
+    let cached = await cache.get(cacheKey);
+
+    if (!cached) {
+        // Seamless fallback to legacy key
+        cacheKey = `recent_movies_${lang}_${maxPages}`;
+        cached = await cache.get(cacheKey);
+        
+        // If we found legacy, let's re-save it to the new key immediately so it migrates
+        if (cached) {
+            await cache.set(`einthusan_catalog_movies_${lang}`, cached);
+        }
+    }
+
     if (cached) {
         const movies = decompressData(cached);
         saveCatalogToStore(lang, maxPages, movies); // Promote to permanent RAM
@@ -190,8 +202,19 @@ async function preloadFromKV() {
     for (const lang of langs) {
         try {
             // Load catalog
-            const cacheKey = `recent_movies_${lang}_15`;
-            const cached = await cache.get(cacheKey);
+            let cacheKey = `einthusan_catalog_movies_${lang}`;
+            let cached = await cache.get(cacheKey);
+
+            if (!cached) {
+                // Seamless fallback to legacy key
+                cacheKey = `recent_movies_${lang}_15`;
+                cached = await cache.get(cacheKey);
+                
+                if (cached) {
+                    await cache.set(`einthusan_catalog_movies_${lang}`, cached); // Auto-migrate
+                }
+            }
+
             if (cached) {
                 const movies = decompressData(cached);
                 if (Array.isArray(movies) && movies.length > 0) {
@@ -206,7 +229,16 @@ async function preloadFromKV() {
     }
 
     try {
-        const tmdbCached = await cache.get("tmdb_meta_map");
+        let tmdbCached = await cache.get("tmdb_language_filter_map");
+        
+        if (!tmdbCached) {
+            // Seamless fallback to legacy TMDB key
+            tmdbCached = await cache.get("tmdb_meta_map");
+            if (tmdbCached) {
+                _tmdbMetaDirty = true; // Flag for auto-migration
+            }
+        }
+
         if (tmdbCached) {
             const decompressed = decompressData(tmdbCached);
             if (decompressed && typeof decompressed === 'object') {
@@ -214,7 +246,7 @@ async function preloadFromKV() {
             }
         }
     } catch (e) {
-        console.error(`Failed to preload tmdb_meta_map from KV:`, e.message);
+        console.error(`Failed to preload tmdb_language_filter_map from KV:`, e.message);
     }
 
     console.info('Startup preload from KV complete.');
@@ -227,8 +259,18 @@ async function getIdMap(lang) {
     if (_idMapStore[key]) return _idMapStore[key];
 
     // First time: load from KV and keep in RAM forever
-    const cacheKey = `id_map_${key}`;
-    const cached = await cache.get(cacheKey);
+    let cacheKey = `einthusan_resolution_map_${key}`;
+    let cached = await cache.get(cacheKey);
+
+    if (!cached) {
+        // Seamless fallback to legacy KV key
+        cacheKey = `id_map_${key}`;
+        cached = await cache.get(cacheKey);
+        if (cached) {
+            _idMapDirty[key] = true; // Flag for auto-migration
+        }
+    }
+
     if (cached) {
         try {
             const decompressed = decompressData(cached);
@@ -255,23 +297,23 @@ async function forceFlushIdMaps() {
         const key = lang.toLowerCase();
         if (_idMapDirty[key]) {
             try {
-                const cacheKey = `id_map_${key}`;
+                const cacheKey = `einthusan_resolution_map_${key}`;
                 await cache.set(cacheKey, compressData(_idMapStore[key]));
                 _idMapDirty[key] = false;
-                console.log(`Successfully flushed id_map for ${lang} to KV.`);
+                console.log(`Successfully flushed einthusan_resolution_map for ${lang} to KV.`);
             } catch (e) {
-                console.error(`Failed to flush id_map for ${lang}:`, e.message);
+                console.error(`Failed to flush einthusan_resolution_map for ${lang}:`, e.message);
             }
         }
     }
 
     if (_tmdbMetaDirty) {
         try {
-            await cache.set("tmdb_meta_map", compressData(_tmdbMetaStore));
+            await cache.set("tmdb_language_filter_map", compressData(_tmdbMetaStore));
             _tmdbMetaDirty = false;
-            console.log(`Successfully flushed tmdb_meta_map to KV.`);
+            console.log(`Successfully flushed tmdb_language_filter_map to KV.`);
         } catch (e) {
-            console.error(`Failed to flush tmdb_meta_map:`, e.message);
+            console.error(`Failed to flush tmdb_language_filter_map:`, e.message);
         }
     }
 }
@@ -1034,12 +1076,12 @@ async function getEinthusanIdByTitle(title, lang, ttnumber) {
 const pendingFetches = new Map();
 
 function isCatalogFetchInProgress(lang, maxPages) {
-    return pendingFetches.has(`recent_movies_${lang}_${maxPages}`);
+    return pendingFetches.has(`einthusan_catalog_movies_${lang}`);
 }
 
 // Optimized function to get all recent movies with parallel processing
 async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch = false, skipCacheWrite = false) {
-    const cacheKey = `recent_movies_${lang}_${maxPages}`;
+    const cacheKey = `einthusan_catalog_movies_${lang}`;
 
     // 1. Check permanent in-process catalog store (zero KV reads, zero network calls)
     if (!forceFetch) {
