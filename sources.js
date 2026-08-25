@@ -44,12 +44,25 @@ class CacheWrapper {
             this.redis = new Redis(redisUrl);
             console.log("Connected to Redis Cache (with L1 local cache).");
         }
+
+        // Telemetry
+        this.stats = {
+            kvReads: 0,
+            kvWrites: 0,
+            l1Hits: 0,
+            startTime: Date.now()
+        };
+    }
+
+    getStats() {
+        return this.stats;
     }
 
     async get(key, l1Only = false) {
         // 1. Check L1 Memory Cache first (0ms, 0 network calls)
         const localVal = this.localCache.get(key);
         if (localVal !== undefined) {
+            this.stats.l1Hits++;
             return localVal;
         }
 
@@ -58,6 +71,7 @@ class CacheWrapper {
 
         // 2. Check L2 Cloudflare KV
         if (this.useCloudflareKV) {
+            this.stats.kvReads++;
             try {
                 const url = `https://api.cloudflare.com/client/v4/accounts/${this.cfAccountId}/storage/kv/namespaces/${this.cfNamespaceId}/values/${encodeURIComponent(key)}`;
                 const res = await axios.get(url, {
@@ -113,6 +127,7 @@ class CacheWrapper {
 
         // 2. Save to L2 Cloudflare KV
         if (this.useCloudflareKV) {
+            this.stats.kvWrites++;
             try {
                 const url = `https://api.cloudflare.com/client/v4/accounts/${this.cfAccountId}/storage/kv/namespaces/${this.cfNamespaceId}/values/${encodeURIComponent(key)}?expiration_ttl=${Math.max(60, ttlSeconds)}`;
                 await axios.put(url, valToStore, {

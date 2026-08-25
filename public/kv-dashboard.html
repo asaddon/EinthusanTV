@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EinthusanTV KV Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .card-value {
+            font-size: 3rem;
+            font-weight: 700;
+            display: flex;
+            align-items: baseline;
+            gap: 0.25rem;
+        }
+
+        .card-value span {
+            font-size: 1rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .reads .card-value { color: var(--accent-blue); }
+        .writes .card-value { color: var(--accent-purple); }
+        .hits .card-value { color: var(--accent-green); }
+
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+
+        .footer {
+            margin-top: 3rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .live-indicator {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .uptime {
+            grid-column: 1 / -1;
+            text-align: center;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0;
+            margin-top: 1rem;
+        }
+        
+        .uptime .card-value {
+            font-size: 1.5rem;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Cloudflare KV Telemetry</h1>
+    
+    <div class="dashboard">
+        <div class="card hits">
+            <div class="card-title">L1 Memory Hits</div>
+            <div class="card-value" id="l1Hits">0 <span>hits</span></div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Saved KV Reads</div>
+        </div>
+
+        <div class="card reads">
+            <div class="card-title">Cloudflare KV Reads</div>
+            <div class="card-value" id="kvReads">0 <span>reads</span></div>
+        </div>
+
+        <div class="card writes">
+            <div class="card-title">Cloudflare KV Writes</div>
+            <div class="card-value" id="kvWrites">0 <span>writes</span></div>
+        </div>
+        
+        <div class="card uptime">
+            <div class="card-title">Server Uptime</div>
+            <div class="card-value" id="uptime">0h 0m</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <span class="live-indicator pulse"></span>
+        Live updating every 2s
+    </div>
+
+    <script>
+        function formatUptime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/kv-stats');
+                if (!res.ok) {
+                    // If 401, they probably aren't authenticated yet or session expired
+                    if(res.status === 401) {
+                        window.location.reload();
+                    }
+                    return;
+                }
+                const data = await res.json();
+                
+                // Animate value changes subtly
+                const updateValue = (id, newVal) => {
+                    const el = document.getElementById(id);
+                    const current = parseInt(el.childNodes[0].nodeValue) || 0;
+                    if(current !== newVal) {
+                        el.style.transform = 'scale(1.1)';
+                        setTimeout(() => el.style.transform = 'scale(1)', 200);
+                    }
+                    el.childNodes[0].nodeValue = newVal + ' ';
+                };
+
+                updateValue('kvReads', data.kvReads);
+                updateValue('kvWrites', data.kvWrites);
+                updateValue('l1Hits', data.l1Hits);
+                
+                const uptimeMs = Date.now() - data.startTime;
+                document.getElementById('uptime').innerText = formatUptime(uptimeMs);
+
+            } catch (e) {
+                console.error('Error fetching stats:', e);
+            }
+        }
+
+        // Initial fetch
+        fetchStats();
+        
+        // Poll every 2 seconds
+        setInterval(fetchStats, 2000);
+    </script>
+</body>
+</html>

@@ -76,6 +76,28 @@ app.use(swStats.getMiddleware({
     }
 }));
 
+// Custom KV Dashboard & Telemetry Endpoint (Secured by Basic Auth)
+const basicAuth = (req, res, next) => {
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+    const expectedUser = process.env.STATS_USERNAME || 'admin';
+    const expectedPass = process.env.STATS_PASSWORD;
+
+    if (login && password && login === expectedUser && password === expectedPass) {
+        return next();
+    }
+    res.set('WWW-Authenticate', 'Basic realm="401"');
+    res.status(401).send('Authentication required.');
+};
+
+app.get('/kv-dashboard', basicAuth, (req, res) => {
+    res.sendFile(require('path').join(__dirname, 'public/kv-dashboard.html'));
+});
+
+app.get('/api/kv-stats', basicAuth, (req, res) => {
+    res.json(sources.cache.getStats());
+});
+
 // Redirect favicon.ico requests to the actual Einthusan favicon
 app.get('/favicon.ico', (req, res) => res.redirect('https://einthusan.tv/etc/favicon-16x16.png'));
 
