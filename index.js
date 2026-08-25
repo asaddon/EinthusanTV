@@ -37,6 +37,8 @@ app.use((req, res, next) => {
         path === '/favicon.ico' ||
         path === '/robots.txt' ||
         path === '/api/setup' || // Allow the new analytics route
+        path === '/kv-dashboard' ||
+        path === '/api/kv-stats' ||
         path === '/'; // root redirects to /configure
 
     if (!isAllowed) {
