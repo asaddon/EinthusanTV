@@ -429,5 +429,9 @@ app.get('/:rpdbKey?/:configuration/meta/movie/:id/:extra?.json', async (req, res
     }
 });
 
+// Dummy route to gracefully block all subtitle requests and silence 404 errors
+app.get('*/subtitles/*', (req, res) => {
+    return res.json({ subtitles: [] });
+});
 
 module.exports = app;
