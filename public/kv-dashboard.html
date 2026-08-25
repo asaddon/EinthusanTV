@@ -157,6 +157,12 @@
             gap: 1.5rem;
             height: 500px;
         }
+
+        .explorer-grid > .card {
+            min-height: 0; /* Prevents grid blowout */
+            height: 100%;
+            box-sizing: border-box;
+        }
         
         @media (max-width: 768px) {
             .explorer-grid {
@@ -196,7 +202,9 @@
             background: rgba(0,0,0,0.3);
             border-radius: 8px;
             padding: 1rem;
-            overflow: auto;
+            overflow-y: auto;
+            height: 100%;
+            box-sizing: border-box;
             font-family: monospace;
             font-size: 0.875rem;
             white-space: pre-wrap;
@@ -277,8 +285,8 @@
                     Click 'Load Live Cache Data' to scan L1 RAM.
                 </div>
             </div>
-            <div class="card">
-                <div class="json-viewer" id="jsonViewer">Select a key to view uncompressed data.</div>
+            <div class="card" style="padding: 0; overflow: hidden;">
+                <div class="json-viewer" id="jsonViewer" style="border-radius: 16px;">Select a key to view uncompressed data.</div>
             </div>
         </div>
     </div>
