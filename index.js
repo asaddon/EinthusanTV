@@ -39,6 +39,7 @@ app.use((req, res, next) => {
         path === '/api/setup' || // Allow the new analytics route
         path === '/kv-dashboard' ||
         path === '/api/kv-stats' ||
+        path === '/api/cache-explorer' ||
         path === '/einthusan-gate' ||
         path === '/api/gate-auth' ||
         path === '/'; // root redirects to /configure
@@ -124,6 +125,10 @@ app.get('/kv-dashboard', cookieAuth, (req, res) => {
 
 app.get('/api/kv-stats', cookieAuth, (req, res) => {
     res.json(sources.cache.getStats());
+});
+
+app.get('/api/cache-explorer', cookieAuth, (req, res) => {
+    res.json(sources.cache.getCacheDump());
 });
 
 // Redirect favicon.ico requests to the actual Einthusan favicon

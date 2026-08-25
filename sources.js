@@ -58,6 +58,39 @@ class CacheWrapper {
         return this.stats;
     }
 
+    getCacheDump() {
+        const keys = this.localCache.keys();
+        const dump = {};
+        for (const key of keys) {
+            const rawVal = this.localCache.get(key);
+            let parsedVal = rawVal;
+            
+            if (typeof rawVal === 'string') {
+                try {
+                    const zlib = require('zlib');
+                    const buffer = Buffer.from(rawVal, 'base64');
+                    parsedVal = JSON.parse(zlib.brotliDecompressSync(buffer).toString());
+                } catch (e1) {
+                    try {
+                        const zlib = require('zlib');
+                        const buffer = Buffer.from(rawVal, 'base64');
+                        parsedVal = JSON.parse(zlib.inflateSync(buffer).toString());
+                    } catch (e2) {
+                        try {
+                            parsedVal = JSON.parse(rawVal);
+                        } catch (e3) {
+                            parsedVal = rawVal;
+                        }
+                    }
+                }
+            } else if (Buffer.isBuffer(rawVal)) {
+                parsedVal = "<Buffer>";
+            }
+            dump[key] = parsedVal;
+        }
+        return dump;
+    }
+
     async get(key, l1Only = false) {
         // 1. Check L1 Memory Cache first (0ms, 0 network calls)
         const localVal = this.localCache.get(key);

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EinthusanTV KV Dashboard</title>
+    <title>KV Telemetry & Cache Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -23,22 +24,27 @@
             margin: 0;
             padding: 2rem;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             background-image: 
                 radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
                 radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+            background-attachment: fixed;
         }
 
         h1 {
             font-size: 2.5rem;
             font-weight: 700;
-            margin-bottom: 2rem;
+            margin-bottom: 0.5rem;
             background: linear-gradient(to right, #60a5fa, #a78bfa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
         }
 
         .dashboard {
@@ -46,7 +52,8 @@
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1.5rem;
             width: 100%;
-            max-width: 1000px;
+            max-width: 1200px;
+            margin: 0 auto 2rem auto;
         }
 
         .card {
@@ -58,13 +65,16 @@
             padding: 1.5rem;
             display: flex;
             flex-direction: column;
-            align-items: center;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
+        
+        .metric-card {
+            align-items: center;
+        }
 
         .card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
         }
 
@@ -93,14 +103,104 @@
         .reads .card-value { color: var(--accent-blue); }
         .writes .card-value { color: var(--accent-purple); }
         .hits .card-value { color: var(--accent-green); }
-
-        .pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto 2rem auto;
         }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
+        
+        @media (max-width: 768px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .cache-explorer {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .cache-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        button {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s ease, transform 0.1s ease;
+        }
+        
+        button:hover { opacity: 0.9; }
+        button:active { transform: scale(0.98); }
+        
+        .explorer-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 1.5rem;
+            height: 500px;
+        }
+        
+        @media (max-width: 768px) {
+            .explorer-grid {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+        }
+        
+        .key-list {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .key-item {
+            padding: 0.75rem 1rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: background 0.2s;
+            border: 1px solid transparent;
+            word-break: break-all;
+        }
+        
+        .key-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .key-item.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--accent-blue);
+        }
+        
+        .json-viewer {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow: auto;
+            font-family: monospace;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            color: #e2e8f0;
         }
 
         .footer {
@@ -109,6 +209,7 @@
             font-size: 0.875rem;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 0.5rem;
         }
 
@@ -118,104 +219,254 @@
             background-color: var(--accent-green);
             border-radius: 50%;
             display: inline-block;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
         
-        .uptime {
-            grid-column: 1 / -1;
-            text-align: center;
-            background: transparent;
-            border: none;
-            box-shadow: none;
-            padding: 0;
-            margin-top: 1rem;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
         }
-        
-        .uptime .card-value {
-            font-size: 1.5rem;
-            justify-content: center;
-            color: var(--text-main);
-        }
-
     </style>
 </head>
 <body>
-    <h1>Cloudflare KV Telemetry</h1>
+    <h1>KV Telemetry Dashboard</h1>
+    <p class="subtitle" id="uptime">Uptime: 0h 0m</p>
     
     <div class="dashboard">
-        <div class="card hits">
+        <div class="card metric-card hits">
             <div class="card-title">L1 Memory Hits</div>
-            <div class="card-value" id="l1Hits">0 <span>hits</span></div>
+            <div class="card-value" id="l1Hits">0</div>
             <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Saved KV Reads</div>
         </div>
 
-        <div class="card reads">
+        <div class="card metric-card reads">
             <div class="card-title">Cloudflare KV Reads</div>
-            <div class="card-value" id="kvReads">0 <span>reads</span></div>
+            <div class="card-value" id="kvReads">0</div>
         </div>
 
-        <div class="card writes">
+        <div class="card metric-card writes">
             <div class="card-title">Cloudflare KV Writes</div>
-            <div class="card-value" id="kvWrites">0 <span>writes</span></div>
+            <div class="card-value" id="kvWrites">0</div>
+        </div>
+    </div>
+    
+    <div class="charts-container">
+        <div class="card">
+            <div class="card-title">Real-Time Operations</div>
+            <div class="chart-wrapper">
+                <canvas id="lineChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Cache Efficiency Ratio</div>
+            <div class="chart-wrapper">
+                <canvas id="donutChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="cache-explorer">
+        <div class="cache-header">
+            <h2>Live Cache Explorer</h2>
+            <button id="loadCacheBtn">Load Live Cache Data</button>
         </div>
         
-        <div class="card uptime">
-            <div class="card-title">Server Uptime</div>
-            <div class="card-value" id="uptime">0h 0m</div>
+        <div class="explorer-grid">
+            <div class="card key-list" id="keyList">
+                <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                    Click 'Load Live Cache Data' to scan L1 RAM.
+                </div>
+            </div>
+            <div class="card">
+                <div class="json-viewer" id="jsonViewer">Select a key to view uncompressed data.</div>
+            </div>
         </div>
     </div>
 
     <div class="footer">
-        <span class="live-indicator pulse"></span>
-        Live updating every 2s
+        <span class="live-indicator"></span>
+        Metrics live updating every 2s
     </div>
 
     <script>
-        function formatUptime(ms) {
-            const totalSeconds = Math.floor(ms / 1000);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            return `${hours}h ${minutes}m`;
-        }
+        // Chart.js Configuration
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        
+        const lineCtx = document.getElementById('lineChart').getContext('2d');
+        const donutCtx = document.getElementById('donutChart').getContext('2d');
+        
+        const maxDataPoints = 30; // 60 seconds (2s interval)
+        const timeLabels = Array(maxDataPoints).fill('');
+        
+        const lineChart = new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {
+                        label: 'L1 Hits',
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        data: Array(maxDataPoints).fill(0)
+                    },
+                    {
+                        label: 'KV Reads',
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        data: Array(maxDataPoints).fill(0)
+                    },
+                    {
+                        label: 'KV Writes',
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        data: Array(maxDataPoints).fill(0)
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
+                scales: {
+                    x: { display: false },
+                    y: { 
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    }
+                },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+        
+        const donutChart = new Chart(donutCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['L1 Hits', 'KV Reads'],
+                datasets: [{
+                    data: [1, 1],
+                    backgroundColor: ['#10b981', '#3b82f6'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
 
+        let prevStats = null;
+        
         async function fetchStats() {
             try {
                 const res = await fetch('/api/kv-stats');
                 if (!res.ok) {
-                    // If 401, they probably aren't authenticated yet or session expired
-                    if(res.status === 401) {
-                        window.location.reload();
-                    }
+                    if(res.status === 401) window.location.href = '/einthusan-gate';
                     return;
                 }
                 const data = await res.json();
                 
-                // Animate value changes subtly
-                const updateValue = (id, newVal) => {
-                    const el = document.getElementById(id);
-                    const current = parseInt(el.childNodes[0].nodeValue) || 0;
-                    if(current !== newVal) {
-                        el.style.transform = 'scale(1.1)';
-                        setTimeout(() => el.style.transform = 'scale(1)', 200);
-                    }
-                    el.childNodes[0].nodeValue = newVal + ' ';
-                };
-
-                updateValue('kvReads', data.kvReads);
-                updateValue('kvWrites', data.kvWrites);
-                updateValue('l1Hits', data.l1Hits);
+                // Update Top Cards
+                document.getElementById('kvReads').innerText = data.kvReads;
+                document.getElementById('kvWrites').innerText = data.kvWrites;
+                document.getElementById('l1Hits').innerText = data.l1Hits;
                 
-                const uptimeMs = Date.now() - data.startTime;
-                document.getElementById('uptime').innerText = formatUptime(uptimeMs);
+                // Uptime
+                const totalSeconds = Math.floor((Date.now() - data.startTime) / 1000);
+                document.getElementById('uptime').innerText = `Uptime: ${Math.floor(totalSeconds / 3600)}h ${Math.floor((totalSeconds % 3600) / 60)}m`;
+
+                // Update Line Chart (Deltas)
+                if (prevStats) {
+                    const deltaHits = data.l1Hits - prevStats.l1Hits;
+                    const deltaReads = data.kvReads - prevStats.kvReads;
+                    const deltaWrites = data.kvWrites - prevStats.kvWrites;
+                    
+                    lineChart.data.datasets[0].data.shift();
+                    lineChart.data.datasets[0].data.push(deltaHits);
+                    
+                    lineChart.data.datasets[1].data.shift();
+                    lineChart.data.datasets[1].data.push(deltaReads);
+                    
+                    lineChart.data.datasets[2].data.shift();
+                    lineChart.data.datasets[2].data.push(deltaWrites);
+                    
+                    lineChart.update();
+                }
+                prevStats = data;
+                
+                // Update Donut Chart
+                donutChart.data.datasets[0].data = [data.l1Hits || 1, data.kvReads || 1];
+                donutChart.update();
 
             } catch (e) {
                 console.error('Error fetching stats:', e);
             }
         }
 
-        // Initial fetch
-        fetchStats();
+        // Cache Explorer Logic
+        let cacheData = {};
+        const loadBtn = document.getElementById('loadCacheBtn');
+        const keyList = document.getElementById('keyList');
+        const jsonViewer = document.getElementById('jsonViewer');
+
+        loadBtn.addEventListener('click', async () => {
+            loadBtn.innerText = 'Scanning RAM...';
+            loadBtn.style.opacity = '0.7';
+            try {
+                const res = await fetch('/api/cache-explorer');
+                if (!res.ok) throw new Error('Failed to fetch cache');
+                cacheData = await res.json();
+                
+                renderKeyList();
+                jsonViewer.innerText = 'Select a key to view uncompressed data.';
+            } catch (err) {
+                console.error(err);
+                jsonViewer.innerText = 'Error loading cache data.';
+            } finally {
+                loadBtn.innerText = 'Load Live Cache Data';
+                loadBtn.style.opacity = '1';
+            }
+        });
         
-        // Poll every 2 seconds
+        function renderKeyList() {
+            keyList.innerHTML = '';
+            const keys = Object.keys(cacheData);
+            
+            if (keys.length === 0) {
+                keyList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Cache is empty.</div>';
+                return;
+            }
+            
+            keys.forEach(key => {
+                const div = document.createElement('div');
+                div.className = 'key-item';
+                div.innerText = key;
+                div.onclick = () => {
+                    document.querySelectorAll('.key-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                    const val = cacheData[key];
+                    jsonViewer.innerText = typeof val === 'object' ? JSON.stringify(val, null, 2) : val;
+                };
+                keyList.appendChild(div);
+            });
+        }
+
+        // Initialize
+        fetchStats();
         setInterval(fetchStats, 2000);
     </script>
 </body>
