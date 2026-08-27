@@ -426,6 +426,8 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
                 results[lang] = updatedCache;
                 newMoviesAdded = true; // Mark that new movies were added
             } else {
+                // Force migration to new key even if no new movies were found
+                await cache.set(cacheKey, compressData(cachedMovies), 604800);
                 results[lang] = cachedMovies;
             }
         } else {
