@@ -850,17 +850,24 @@ async function stream(einthusan_id, lang) {
     }
 
     const imdb = einthusan_id;
-    const cacheKey = `stream_${einthusan_id}_${lang}`;
-    const cached = await cache.get(cacheKey, true); // l1Only = true
+    const cacheKey = `stream_${einthusan_id}`; // Unified cache key
+    let cachedDict = await cache.get(cacheKey, true); // l1Only = true
 
-    if (cached) {
-        const cachedResult = decompressData(cached);
-        if (cachedResult.streams && cachedResult.streams.length === 0) {
-            return cachedResult; // Negative cache hit
+    if (cachedDict) {
+        cachedDict = decompressData(cachedDict);
+        if (cachedDict[lang] !== undefined) {
+            const cachedStreams = cachedDict[lang];
+            const cachedResult = { streams: cachedStreams };
+            
+            if (cachedStreams.length === 0) {
+                return cachedResult; // Negative cache hit
+            }
+            const cachedTitle = cachedStreams[0].title;
+            console.info(`${useColors ? '\x1b[32m' : ''}Cache Hit For Stream:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[36m' : ''}${cachedTitle.replace(/\n/g, ' ')}${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[33m' : ''}(${einthusan_id})${useColors ? '\x1b[0m' : ''}`);
+            return cachedResult;
         }
-        const cachedTitle = cachedResult.streams[0].title;
-        console.info(`${useColors ? '\x1b[32m' : ''}Cache Hit For Stream:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[36m' : ''}${cachedTitle.replace(/\n/g, ' ')}${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[33m' : ''}(${einthusan_id})${useColors ? '\x1b[0m' : ''}`);
-        return cachedResult;
+    } else {
+        cachedDict = {};
     }
 
     try {
@@ -889,7 +896,6 @@ async function stream(einthusan_id, lang) {
         } else {
             // If einthusan_id is not a ttnumber (IMDB ID), assume it's already an Einthusan ID
             einthusan_id = einthusan_id.replace("einthusan_", "");
-            //console.info(`Using provided Einthusan ID: ${einthusan_id}`);
         }
         if (!einthusan_id) return;
         const url = `${config.BaseURL}/movie/watch/${einthusan_id}/`;
@@ -927,16 +933,19 @@ async function stream(einthusan_id, lang) {
 
         console.info(`${useColors ? '\x1b[32m' : ''}Stream Fetched Successfully For:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[36m' : ''}${title}${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[33m' : ''}(${year})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[31m' : ''}(EinthusanID: ${einthusan_id} and imdbID: ${imdb})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[32m' : ''}In Language:${useColors ? '\x1b[0m' : ''} ${capitalizedLang}`);
 
-        await cache.set(cacheKey, compressData(result), 7200, true); // L1 only — stream links expire in 2h anyway, no KV writes
+        cachedDict[lang] = result.streams;
+        await cache.set(cacheKey, compressData(cachedDict), 7200, true); // L1 only — stream links expire in 2h anyway, no KV writes
         return result;
     } catch (err) {
         // Handle specific and general errors
         if (err.message.includes("Einthusan ID could not be retrieved") || err.message.includes("is not valid for the language") || err.message.includes("No title found")) {
-            await cache.set(cacheKey, compressData({ streams: [] }), 7200, true);
+            cachedDict[lang] = [];
+            await cache.set(cacheKey, compressData(cachedDict), 7200, true);
         } else {
             console.error("Error in Stream Function:", err.message);
             // Cache server errors briefly to prevent spamming Einthusan if they are down
-            await cache.set(cacheKey, compressData({ streams: [] }), 300, true);
+            cachedDict[lang] = [];
+            await cache.set(cacheKey, compressData(cachedDict), 300, true);
         }
         return { streams: [] };
     }
