@@ -394,8 +394,14 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
     let newMoviesAdded = false; // Track if new movies were added during this run
 
     const fetchMoviesForLanguage = async (lang) => {
-        const cacheKey = `recent_movies_${lang}_${maxPages}`;
-        const cached = await cache.get(cacheKey);
+        const cacheKey = `einthusan_catalog_movies_${lang}`;
+        let cached = await cache.get(cacheKey);
+        
+        if (!cached) {
+            // Check legacy key during scraper run just in case
+            const legacyKey = `recent_movies_${lang}_${maxPages}`;
+            cached = await cache.get(legacyKey);
+        }
 
         if (cached) {
             const cachedMovies = decompressData(cached);
