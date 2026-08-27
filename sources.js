@@ -1457,6 +1457,18 @@ async function meta(einthusan_id, lang) {
 module.exports = {
     cache,
     search,
+    getMapSizes: () => {
+        let idMapKeys = 0;
+        for (const lang in _idMapStore) {
+            if (_idMapStore[lang]) {
+                idMapKeys += Object.keys(_idMapStore[lang]).length;
+            }
+        }
+        return {
+            idMapKeys,
+            tmdbKeys: Object.keys(_tmdbMetaStore).length
+        };
+    },
     stream,
     getAllRecentMovies,
     fetchRecentMoviesForAllLanguages,

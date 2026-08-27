@@ -126,7 +126,9 @@ app.get('/kv-dashboard', cookieAuth, (req, res) => {
 });
 
 app.get('/api/kv-stats', cookieAuth, (req, res) => {
-    res.json(sources.cache.getStats());
+    const stats = sources.cache.getStats();
+    const mapSizes = sources.getMapSizes();
+    res.json({ ...stats, ...mapSizes });
 });
 
 app.get('/api/cache-explorer', cookieAuth, (req, res) => {

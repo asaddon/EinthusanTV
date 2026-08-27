@@ -256,6 +256,18 @@
             <div class="card-title">Cloudflare KV Writes</div>
             <div class="card-value" id="kvWrites">0</div>
         </div>
+        
+        <div class="card metric-card">
+            <div class="card-title" style="color: #f59e0b;">Learned Movie IDs</div>
+            <div class="card-value" id="idMapKeys" style="color: #fcd34d;">0</div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Total Mapped Across Langs</div>
+        </div>
+
+        <div class="card metric-card">
+            <div class="card-title" style="color: #ec4899;">TMDB Filter Cache</div>
+            <div class="card-value" id="tmdbKeys" style="color: #fbcfe8;">0</div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Total Titles Cached</div>
+        </div>
     </div>
     
     <div class="charts-container">
@@ -395,6 +407,8 @@
                 document.getElementById('kvReads').innerText = data.kvReads;
                 document.getElementById('kvWrites').innerText = data.kvWrites;
                 document.getElementById('l1Hits').innerText = data.l1Hits;
+                document.getElementById('idMapKeys').innerText = data.idMapKeys || 0;
+                document.getElementById('tmdbKeys').innerText = data.tmdbKeys || 0;
                 
                 // Uptime
                 const totalSeconds = Math.floor((Date.now() - data.startTime) / 1000);
