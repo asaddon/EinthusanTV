@@ -131,6 +131,23 @@ app.get('/api/cache-explorer', cookieAuth, (req, res) => {
     res.json(sources.cache.getCacheDump());
 });
 
+app.get('/api/kv-keys', cookieAuth, async (req, res) => {
+    const keys = await sources.cache.listKVKeys();
+    res.json({ keys });
+});
+
+app.get('/api/kv-value/:key', cookieAuth, async (req, res) => {
+    try {
+        const val = await sources.cache.get(req.params.key);
+        if (val === undefined) {
+            return res.json({ error: "Key not found in KV or expired." });
+        }
+        res.json({ value: sources.decompressData(val) });
+    } catch (e) {
+        res.json({ error: "Failed to fetch or decompress key: " + e.message });
+    }
+});
+
 // Redirect favicon.ico requests to the actual Einthusan favicon
 app.get('/favicon.ico', (req, res) => res.redirect('https://einthusan.tv/etc/favicon-16x16.png'));
 

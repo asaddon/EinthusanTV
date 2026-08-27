@@ -276,7 +276,10 @@
     <div class="cache-explorer">
         <div class="cache-header">
             <h2>Live Cache Explorer</h2>
-            <button id="loadCacheBtn">Load Live Cache Data</button>
+            <div style="display: flex; gap: 1rem;">
+                <button id="loadL1Btn">View L1 Cache</button>
+                <button id="loadKVBtn" style="background: linear-gradient(135deg, #f59e0b, #d97706);">View Cloudflare KV</button>
+            </div>
         </div>
         
         <div class="explorer-grid">
@@ -427,26 +430,56 @@
 
         // Cache Explorer Logic
         let cacheData = {};
-        const loadBtn = document.getElementById('loadCacheBtn');
+        let currentMode = 'L1'; // 'L1' or 'KV'
+        
+        const loadL1Btn = document.getElementById('loadL1Btn');
+        const loadKVBtn = document.getElementById('loadKVBtn');
         const keyList = document.getElementById('keyList');
         const jsonViewer = document.getElementById('jsonViewer');
 
-        loadBtn.addEventListener('click', async () => {
-            loadBtn.innerText = 'Scanning RAM...';
-            loadBtn.style.opacity = '0.7';
+        loadL1Btn.addEventListener('click', async () => {
+            loadL1Btn.innerText = 'Scanning RAM...';
+            loadL1Btn.style.opacity = '0.7';
+            currentMode = 'L1';
             try {
                 const res = await fetch('/api/cache-explorer');
                 if (!res.ok) throw new Error('Failed to fetch cache');
                 cacheData = await res.json();
                 
                 renderKeyList();
-                jsonViewer.innerText = 'Select a key to view uncompressed data.';
+                jsonViewer.innerText = 'Select an L1 Cache key to view data.';
             } catch (err) {
                 console.error(err);
-                jsonViewer.innerText = 'Error loading cache data.';
+                jsonViewer.innerText = 'Error loading L1 cache data.';
             } finally {
-                loadBtn.innerText = 'Load Live Cache Data';
-                loadBtn.style.opacity = '1';
+                loadL1Btn.innerText = 'View L1 Cache';
+                loadL1Btn.style.opacity = '1';
+            }
+        });
+        
+        loadKVBtn.addEventListener('click', async () => {
+            loadKVBtn.innerText = 'Fetching CF Keys...';
+            loadKVBtn.style.opacity = '0.7';
+            currentMode = 'KV';
+            try {
+                const res = await fetch('/api/kv-keys');
+                if (!res.ok) throw new Error('Failed to fetch KV keys');
+                const data = await res.json();
+                
+                // For KV, cacheData is just an object with null values initially
+                cacheData = {};
+                if (data.keys) {
+                    data.keys.forEach(k => cacheData[k] = null);
+                }
+                
+                renderKeyList();
+                jsonViewer.innerText = 'Select a Cloudflare KV key to fetch its value remotely.';
+            } catch (err) {
+                console.error(err);
+                jsonViewer.innerText = 'Error loading KV keys.';
+            } finally {
+                loadKVBtn.innerText = 'View Cloudflare KV';
+                loadKVBtn.style.opacity = '1';
             }
         });
         
@@ -455,7 +488,7 @@
             const keys = Object.keys(cacheData);
             
             if (keys.length === 0) {
-                keyList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Cache is empty.</div>';
+                keyList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 2rem;">No keys found.</div>';
                 return;
             }
             
@@ -463,11 +496,27 @@
                 const div = document.createElement('div');
                 div.className = 'key-item';
                 div.innerText = key;
-                div.onclick = () => {
+                div.onclick = async () => {
                     document.querySelectorAll('.key-item').forEach(el => el.classList.remove('active'));
                     div.classList.add('active');
-                    const val = cacheData[key];
-                    jsonViewer.innerText = typeof val === 'object' ? JSON.stringify(val, null, 2) : val;
+                    
+                    if (currentMode === 'L1') {
+                        const val = cacheData[key];
+                        jsonViewer.innerText = typeof val === 'object' ? JSON.stringify(val, null, 2) : val;
+                    } else if (currentMode === 'KV') {
+                        jsonViewer.innerText = 'Fetching from Cloudflare KV...';
+                        try {
+                            const res = await fetch('/api/kv-value/' + encodeURIComponent(key));
+                            const data = await res.json();
+                            if (data.error) {
+                                jsonViewer.innerText = 'Error: ' + data.error;
+                            } else {
+                                jsonViewer.innerText = typeof data.value === 'object' ? JSON.stringify(data.value, null, 2) : data.value;
+                            }
+                        } catch (err) {
+                            jsonViewer.innerText = 'Network error fetching KV value.';
+                        }
+                    }
                 };
                 keyList.appendChild(div);
             });

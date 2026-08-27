@@ -140,6 +140,23 @@ class CacheWrapper {
         return undefined;
     }
 
+    async listKVKeys() {
+        if (!this.useCloudflareKV) return [];
+        try {
+            const url = `https://api.cloudflare.com/client/v4/accounts/${this.cfAccountId}/storage/kv/namespaces/${this.cfNamespaceId}/keys`;
+            const res = await axios.get(url, {
+                headers: { 'Authorization': `Bearer ${this.cfApiToken}` },
+                timeout: 5000
+            });
+            if (res.data && res.data.success) {
+                return res.data.result.map(k => k.name);
+            }
+        } catch (err) {
+            console.error("Failed to list KV keys:", err.message);
+        }
+        return [];
+    }
+
     async set(key, value, ttlSeconds = 1800, l1Only = false) {
         // 1. Save to L1 Memory Cache immediately
         // If it's an l1Only key, it needs its full TTL. If it's backed by KV, cap RAM to 10 mins.
