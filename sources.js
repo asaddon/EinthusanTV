@@ -1198,6 +1198,32 @@ function isCatalogFetchInProgress(lang, maxPages) {
 }
 
 // Optimized function to get all recent movies with parallel processing
+let lastPurgeTime = 0;
+async function triggerCloudflarePurge(lang) {
+    const { CF_ZONE_ID, CF_API_TOKEN } = process.env;
+    if (!CF_ZONE_ID || !CF_API_TOKEN) return;
+    
+    // Cooldown of 5 minutes to prevent spamming CF API
+    if (Date.now() - lastPurgeTime < 300000) return;
+    
+    lastPurgeTime = Date.now();
+    
+    try {
+        console.info(`Triggering Cloudflare Edge Purge due to new movies in ${lang}...`);
+        await axios.post(`https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache`, {
+            purge_everything: true
+        }, {
+            headers: {
+                'Authorization': `Bearer ${CF_API_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        console.info(`Cloudflare Edge Purge Successful!`);
+    } catch (e) {
+        console.error(`Cloudflare Purge Failed:`, e.message);
+    }
+}
+
 async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch = false, skipCacheWrite = false) {
     const cacheKey = `einthusan_catalog_movies_${lang}`;
 
@@ -1396,7 +1422,21 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
         }
 
         if (maxPages === 15) {
+            const oldCatalog = getCatalogFromStore(lang, 15);
+            let hasNewMovies = false;
+            
+            // Detect if the top newest movie has changed
+            if (oldCatalog && oldCatalog.length > 0 && results.length > 0) {
+                if (results[0].id !== oldCatalog[0].id) {
+                    hasNewMovies = true;
+                }
+            }
+            
             saveCatalogToStore(lang, maxPages, results); // save only full catalogs to permanent RAM
+            
+            if (hasNewMovies) {
+                triggerCloudflarePurge(lang);
+            }
         }
         
         if (!skipCacheWrite) {
