@@ -219,16 +219,7 @@ async function getCachedCatalog(lang, maxPages) {
     let cacheKey = `einthusan_catalog_movies_${lang}`;
     let cached = await cache.get(cacheKey);
 
-    if (!cached) {
-        // Seamless fallback to legacy key
-        cacheKey = `recent_movies_${lang}_${maxPages}`;
-        cached = await cache.get(cacheKey);
-        
-        // If we found legacy, let's re-save it to the new key immediately so it migrates
-        if (cached) {
-            await cache.set(`einthusan_catalog_movies_${lang}`, cached);
-        }
-    }
+
 
     if (cached) {
         const movies = decompressData(cached);
@@ -253,15 +244,6 @@ async function preloadFromKV() {
             let cacheKey = `einthusan_catalog_movies_${lang}`;
             let cached = await cache.get(cacheKey);
 
-            if (!cached) {
-                // Seamless fallback to legacy key
-                cacheKey = `recent_movies_${lang}_15`;
-                cached = await cache.get(cacheKey);
-                
-                if (cached) {
-                    await cache.set(`einthusan_catalog_movies_${lang}`, cached); // Auto-migrate
-                }
-            }
 
             if (cached) {
                 const movies = decompressData(cached);
@@ -279,13 +261,6 @@ async function preloadFromKV() {
     try {
         let tmdbCached = await cache.get("tmdb_language_filter_map");
         
-        if (!tmdbCached) {
-            // Seamless fallback to legacy TMDB key
-            tmdbCached = await cache.get("tmdb_meta_map");
-            if (tmdbCached) {
-                _tmdbMetaDirty = true; // Flag for auto-migration
-            }
-        }
 
         if (tmdbCached) {
             const decompressed = decompressData(tmdbCached);
@@ -310,14 +285,7 @@ async function getIdMap(lang) {
     let cacheKey = `einthusan_resolution_map_${key}`;
     let cached = await cache.get(cacheKey);
 
-    if (!cached) {
-        // Seamless fallback to legacy KV key
-        cacheKey = `id_map_${key}`;
-        cached = await cache.get(cacheKey);
-        if (cached) {
-            _idMapDirty[key] = true; // Flag for auto-migration
-        }
-    }
+
 
     if (cached) {
         try {
@@ -396,12 +364,7 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
     const fetchMoviesForLanguage = async (lang) => {
         const cacheKey = `einthusan_catalog_movies_${lang}`;
         let cached = await cache.get(cacheKey);
-        
-        if (!cached) {
-            // Check legacy key during scraper run just in case
-            const legacyKey = `recent_movies_${lang}_${maxPages}`;
-            cached = await cache.get(legacyKey);
-        }
+
 
         if (cached) {
             const cachedMovies = decompressData(cached);
@@ -426,8 +389,7 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
                 results[lang] = updatedCache;
                 newMoviesAdded = true; // Mark that new movies were added
             } else {
-                // Force migration to new key even if no new movies were found
-                await cache.set(cacheKey, compressData(cachedMovies), 604800);
+
                 results[lang] = cachedMovies;
             }
         } else {
