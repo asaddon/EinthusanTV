@@ -40,6 +40,8 @@ app.use((req, res, next) => {
         path === '/kv-dashboard' ||
         path === '/api/kv-stats' ||
         path === '/api/cache-explorer' ||
+        path.startsWith('/api/kv-keys') ||
+        path.startsWith('/api/kv-value') ||
         path === '/einthusan-gate' ||
         path === '/api/gate-auth' ||
         path === '/'; // root redirects to /configure
