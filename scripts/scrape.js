@@ -3,7 +3,7 @@ const sources = require('../sources.js');
 const axios = require('axios');
 
 async function verifyKV(lang) {
-    const key = `recent_movies_${lang}_15`;
+    const key = `einthusan_catalog_movies_${lang}`;
     const url = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/storage/kv/namespaces/${process.env.CF_KV_NAMESPACE_ID}/values/${encodeURIComponent(key)}`;
     try {
         const res = await axios.get(url, {
