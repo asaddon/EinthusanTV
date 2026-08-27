@@ -287,10 +287,12 @@ const _catalogStore = {}; // e.g. { hindi_15: [...movies] }
 // In-process ID Map store (pure RAM, zero KV reads per lookup after first load)
 const _idMapStore = {}; // e.g. { hindi: { tt1234567: "ABCD" }, ... }
 const _idMapDirty = {}; // tracks which languages need a KV flush
+let _lastIdMapUpdate = Date.now();
 
 // In-process TMDB Meta store (pure RAM, flushed to KV periodically)
 let _tmdbMetaStore = {}; // e.g. { "tt1234567": "0", "tt7654321": "Jawan" }
 let _tmdbMetaDirty = false;
+let _lastTmdbUpdate = Date.now();
 
 function getCatalogFromStore(lang, maxPages) {
     return _catalogStore[`${lang}_${maxPages}`] || null;
@@ -391,6 +393,7 @@ async function saveIdMap(lang, mapObj) {
     const key = lang.toLowerCase();
     _idMapStore[key] = mapObj;
     _idMapDirty[key] = true;
+    _lastIdMapUpdate = Date.now();
 }
 
 async function forceFlushIdMaps() {
@@ -438,6 +441,7 @@ async function saveMappedEinthusanId(imdbId, einthusanId, lang) {
     if (map[imdbId] !== einthusanId) {
         map[imdbId] = einthusanId;
         _idMapDirty[lang.toLowerCase()] = true;
+        _lastIdMapUpdate = Date.now();
     }
 }
 
@@ -885,6 +889,7 @@ async function getTMDBMeta(ttNumber) {
         // Save to in-memory batch store, setting dirty flag
         _tmdbMetaStore[ttNumber] = isIndian ? (title || '1') : '0';
         _tmdbMetaDirty = true;
+        _lastTmdbUpdate = Date.now();
 
         return { isIndian, title };
     } catch (err) {
@@ -1535,7 +1540,9 @@ module.exports = {
         }
         return {
             idMapKeys,
-            tmdbKeys: Object.keys(_tmdbMetaStore).length
+            tmdbKeys: Object.keys(_tmdbMetaStore).length,
+            lastIdMapUpdate: _lastIdMapUpdate,
+            lastTmdbUpdate: _lastTmdbUpdate
         };
     },
     stream,
