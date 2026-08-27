@@ -156,6 +156,75 @@ class CacheWrapper {
         }
         return [];
     }
+    
+    async getCloudflareAnalytics(startDate, endDate) {
+        if (!this.useCloudflareKV) return null;
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const dateGeq = startDate || today;
+            const dateLeq = endDate || today;
+            
+            const query = `
+            query GetKVAnalytics($accountTag: string, $date_geq: string, $date_leq: string, $namespaceId: string) {
+              viewer {
+                accounts(filter: {accountTag: $accountTag}) {
+                  kvOperationsAdaptiveGroups(
+                    filter: { date_geq: $date_geq, date_leq: $date_leq, namespaceId: $namespaceId },
+                    limit: 10
+                  ) {
+                    dimensions { actionType }
+                    sum { requests }
+                  }
+                  kvStorageAdaptiveGroups(
+                    filter: { date_geq: $date_geq, date_leq: $date_leq, namespaceId: $namespaceId },
+                    limit: 10
+                  ) {
+                    max { byteCount }
+                  }
+                }
+              }
+            }`;
+
+            const res = await axios.post('https://api.cloudflare.com/client/v4/graphql', {
+                query,
+                variables: {
+                    accountTag: this.cfAccountId,
+                    namespaceId: this.cfNamespaceId,
+                    date_geq: dateGeq,
+                    date_leq: dateLeq
+                }
+            }, {
+                headers: { 'Authorization': `Bearer ${this.cfApiToken}`, 'Content-Type': 'application/json' },
+                timeout: 10000
+            });
+            
+            const accounts = res.data?.data?.viewer?.accounts?.[0];
+            if (accounts) {
+                let reads = 0, writes = 0, deletes = 0, lists = 0;
+                
+                const opsArray = accounts.kvOperationsAdaptiveGroups || [];
+                for (const op of opsArray) {
+                    const type = op.dimensions?.actionType;
+                    const count = op.sum?.requests || 0;
+                    if (type === 'read') reads = count;
+                    if (type === 'write') writes = count;
+                    if (type === 'delete') deletes = count;
+                    if (type === 'list') lists = count;
+                }
+                
+                const storage = accounts.kvStorageAdaptiveGroups?.[0]?.max?.byteCount || 0;
+                
+                return { reads, writes, deletes, lists, storageBytes: storage };
+            } else if (res.data?.errors) {
+                console.error("Cloudflare GraphQL Error:", JSON.stringify(res.data.errors));
+                // Forward specific permission errors
+                return { error: res.data.errors[0].message };
+            }
+        } catch (err) {
+            console.error("Failed to fetch CF Analytics:", err.message);
+        }
+        return null;
+    }
 
     async set(key, value, ttlSeconds = 1800, l1Only = false) {
         // 1. Save to L1 Memory Cache immediately

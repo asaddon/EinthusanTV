@@ -167,7 +167,8 @@
         @media (max-width: 768px) {
             .explorer-grid {
                 grid-template-columns: 1fr;
-                height: auto;
+                height: 700px;
+                grid-template-rows: 250px 1fr;
             }
         }
         
@@ -234,13 +235,166 @@
             0%, 100% { opacity: 1; }
             50% { opacity: .5; }
         }
+        
+        .cf-analytics-container {
+            display: flex;
+            gap: 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto 2rem auto;
+            flex-wrap: wrap;
+        }
+
+        .cf-summary-box {
+            flex: 1;
+            min-width: 600px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .cf-instance-box {
+            width: 300px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .cf-summary-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            font-size: 0.875rem;
+            color: #d4d4d8;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .cf-date-badge {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: #a1a1aa;
+        }
+
+        .cf-date-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            color: #d4d4d8;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            outline: none;
+        }
+        .cf-date-input::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            opacity: 0.5;
+            cursor: pointer;
+        }
+
+        .cf-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+        }
+
+        .cf-stat-col {
+            padding: 1.5rem;
+            border-right: 1px solid var(--glass-border);
+        }
+        
+        .cf-stat-col:last-child {
+            border-right: none;
+        }
+
+        .cf-stat-label {
+            font-size: 0.8rem;
+            color: #a1a1aa;
+            margin-bottom: 0.5rem;
+        }
+
+        .cf-stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #f4f4f5;
+        }
+        
+        .cf-instance-detail {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        
+        @media (max-width: 900px) {
+            .cf-analytics-container { flex-direction: column; }
+            .cf-summary-box { min-width: 100%; }
+            .cf-instance-box { width: 100%; }
+            .cf-summary-grid { grid-template-columns: repeat(3, 1fr); }
+            .cf-stat-col { border-bottom: 1px solid #333; }
+        }
     </style>
 </head>
 <body>
     <h1>KV Telemetry Dashboard</h1>
-    <p class="subtitle" id="uptime">Uptime: 0h 0m</p>
     
-    <div class="dashboard">
+    <!-- Cloudflare KV Historical Analytics -->
+    <div class="cf-analytics-container">
+        <div class="cf-summary-box">
+            <div class="cf-summary-header" style="justify-content: space-between;">
+                <div>Summary</div>
+                <div style="display: flex; gap: 0.5rem; align-items: center; color: #a1a1aa; font-size: 0.75rem;">
+                    <input type="date" id="cfStart" class="cf-date-input" />
+                    <span>to</span>
+                    <input type="date" id="cfEnd" class="cf-date-input" />
+                </div>
+            </div>
+            <div class="cf-summary-grid">
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">Reads</div>
+                    <div class="cf-stat-value" id="cfReads">-</div>
+                </div>
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">Writes</div>
+                    <div class="cf-stat-value" id="cfWrites">-</div>
+                </div>
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">Lists</div>
+                    <div class="cf-stat-value" id="cfLists">-</div>
+                </div>
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">Deletes</div>
+                    <div class="cf-stat-value" id="cfDeletes">-</div>
+                </div>
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">Storage</div>
+                    <div class="cf-stat-value" id="cfStorage">-</div>
+                </div>
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">KV count</div>
+                    <div class="cf-stat-value" id="cfKvCount">-</div>
+                </div>
+            </div>
+        </div>
+        <div class="cf-instance-box">
+            <div class="cf-summary-header" style="border: none;">Instance Detail</div>
+            <div class="cf-instance-detail">
+                <div class="cf-stat-label">Namespace</div>
+                <div class="cf-stat-value" style="font-size: 0.9rem;" id="cfNsName">-</div>
+            </div>
+            <div class="cf-instance-detail" style="border: none;">
+                <div class="cf-stat-label">Namespace ID</div>
+                <div class="cf-stat-value" style="font-size: 0.8rem; font-family: monospace; color: #a1a1aa;" id="cfNsId">-</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard top-stats">
         <div class="card metric-card hits">
             <div class="card-title">L1 Memory Hits</div>
             <div class="card-value" id="l1Hits">0</div>
@@ -256,7 +410,9 @@
             <div class="card-title">Cloudflare KV Writes</div>
             <div class="card-value" id="kvWrites">0</div>
         </div>
-        
+    </div>
+    
+    <div class="dashboard bottom-stats">
         <div class="card metric-card">
             <div class="card-title" style="color: #f59e0b;">Learned Movie IDs</div>
             <div class="card-value" id="idMapKeys" style="color: #fcd34d;">0</div>
@@ -267,6 +423,32 @@
             <div class="card-title" style="color: #ec4899;">TMDB Filter Cache</div>
             <div class="card-value" id="tmdbKeys" style="color: #fbcfe8;">0</div>
             <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Total Titles Cached</div>
+        </div>
+    </div>
+    
+    <div class="dashboard server-stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="card metric-card">
+            <div class="card-title" style="color: #60a5fa;">Server RAM Usage</div>
+            <div class="card-value" id="serverRam" style="color: #93c5fd;">0 MB</div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Resident Set Size</div>
+        </div>
+
+        <div class="card metric-card">
+            <div class="card-title" style="color: #34d399;">CPU Load (1m)</div>
+            <div class="card-value" id="cpuLoad" style="color: #6ee7b7;">0.00</div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">System Load Average</div>
+        </div>
+
+        <div class="card metric-card">
+            <div class="card-title" style="color: #a78bfa;">Active Connections</div>
+            <div class="card-value" id="activeConns" style="color: #c4b5fd;">0</div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Concurrent HTTP Streams</div>
+        </div>
+
+        <div class="card metric-card">
+            <div class="card-title" style="color: #a1a1aa;">Server Uptime</div>
+            <div class="card-value" id="uptime" style="color: #d4d4d8; font-size: 1.5rem;">0h 0m</div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Process Duration</div>
         </div>
     </div>
     
@@ -394,6 +576,67 @@
 
         let prevStats = null;
         
+        let cfAnalyticsFetched = false;
+        
+        function initDatePickers() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const startEl = document.getElementById('cfStart');
+            const endEl = document.getElementById('cfEnd');
+            
+            if (!startEl.value) startEl.value = todayStr;
+            if (!endEl.value) endEl.value = todayStr;
+            
+            startEl.addEventListener('change', fetchCfAnalytics);
+            endEl.addEventListener('change', fetchCfAnalytics);
+        }
+
+        async function fetchCfAnalytics() {
+            try {
+                // Fetch KV count from our existing keys route
+                const keysRes = await fetch('/api/kv-keys');
+                if (keysRes.ok) {
+                    const keysData = await keysRes.json();
+                    if (keysData.keys) {
+                        document.getElementById('cfKvCount').innerText = keysData.keys.length;
+                    }
+                }
+                
+                // Fetch Historical CF Analytics
+                const start = document.getElementById('cfStart').value;
+                const end = document.getElementById('cfEnd').value;
+                const res = await fetch(`/api/cf-analytics?start=${start}&end=${end}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                if (data && !data.error) {
+                    const formatNumber = (num) => {
+                        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'm';
+                        if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+                        return num;
+                    };
+                    
+                    const formatBytes = (bytes) => {
+                        if (bytes === 0) return '0 B';
+                        const k = 1024;
+                        const sizes = ['B', 'KB', 'MB', 'GB'];
+                        const i = Math.floor(Math.log(bytes) / Math.log(k));
+                        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                    };
+                    
+                    document.getElementById('cfReads').innerText = formatNumber(data.reads);
+                    document.getElementById('cfWrites').innerText = formatNumber(data.writes);
+                    document.getElementById('cfLists').innerText = formatNumber(data.lists || 0); // we don't query lists explicitly, default to 0
+                    document.getElementById('cfDeletes').innerText = formatNumber(data.deletes);
+                    document.getElementById('cfStorage').innerText = formatBytes(data.storageBytes);
+                    
+                    document.getElementById('cfNsName').innerText = data.namespaceName;
+                    document.getElementById('cfNsId').innerText = data.namespaceId;
+                }
+            } catch (e) {
+                console.error("Failed to fetch CF Analytics", e);
+            }
+        }
+        
         async function fetchStats() {
             try {
                 const res = await fetch('/api/kv-stats');
@@ -409,10 +652,19 @@
                 document.getElementById('l1Hits').innerText = data.l1Hits;
                 document.getElementById('idMapKeys').innerText = data.idMapKeys || 0;
                 document.getElementById('tmdbKeys').innerText = data.tmdbKeys || 0;
+                // Uptime format
+                const up = data.uptime || 0;
+                const d = Math.floor(up / 86400);
+                const h = Math.floor((up % 86400) / 3600);
+                const m = Math.floor((up % 3600) / 60);
+                let uptimeStr = '';
+                if (d > 0) uptimeStr += d + 'd ';
+                uptimeStr += h + 'h ' + m + 'm';
                 
-                // Uptime
-                const totalSeconds = Math.floor((Date.now() - data.startTime) / 1000);
-                document.getElementById('uptime').innerText = `Uptime: ${Math.floor(totalSeconds / 3600)}h ${Math.floor((totalSeconds % 3600) / 60)}m`;
+                document.getElementById('uptime').innerText = uptimeStr;
+                document.getElementById('serverRam').innerText = (data.serverRamMb || 0) + ' MB';
+                document.getElementById('cpuLoad').innerText = data.cpuLoad || '0.00';
+                document.getElementById('activeConns').innerText = data.activeConnections || 0;
 
                 // Update Line Chart (Deltas)
                 if (prevStats) {
@@ -442,6 +694,11 @@
             }
         }
 
+        initDatePickers();
+        setInterval(fetchStats, 2000);
+        fetchStats();
+        fetchCfAnalytics(); // Fetch CF analytics once on load
+        
         // Cache Explorer Logic
         let cacheData = {};
         let currentMode = 'L1'; // 'L1' or 'KV'

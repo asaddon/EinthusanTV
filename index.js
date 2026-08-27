@@ -10,6 +10,16 @@ require('dotenv').config();
 
 const app = express();
 
+// Track Active Connections
+let activeConnections = 0;
+app.use((req, res, next) => {
+    activeConnections++;
+    res.on('close', () => {
+        activeConnections--;
+    });
+    next();
+});
+
 // Enforce Custom Domain (Block direct Render URL traffic that bypasses Cloudflare WAF)
 app.use((req, res, next) => {
     const host = req.get('host') || '';
@@ -40,6 +50,7 @@ app.use((req, res, next) => {
         path === '/kv-dashboard' ||
         path === '/api/kv-stats' ||
         path === '/api/cache-explorer' ||
+        path === '/api/cf-analytics' ||
         path.startsWith('/api/kv-keys') ||
         path.startsWith('/api/kv-value') ||
         path === '/einthusan-gate' ||
@@ -128,11 +139,56 @@ app.get('/kv-dashboard', cookieAuth, (req, res) => {
 app.get('/api/kv-stats', cookieAuth, (req, res) => {
     const stats = sources.cache.getStats();
     const mapSizes = sources.getMapSizes();
-    res.json({ ...stats, ...mapSizes });
+    
+    // Server Telemetry
+    const serverRamMb = (process.memoryUsage().rss / 1024 / 1024).toFixed(2);
+    const cpuLoad = require('os').loadavg()[0].toFixed(2);
+    const uptime = process.uptime();
+    
+    res.json({ 
+        ...stats, 
+        ...mapSizes,
+        serverRamMb,
+        cpuLoad,
+        uptime,
+        activeConnections
+    });
 });
 
 app.get('/api/cache-explorer', cookieAuth, (req, res) => {
     res.json(sources.cache.getCacheDump());
+});
+
+// Cloudflare Analytics Route
+let cfCache = { data: null, timestamp: 0, dateKey: '' };
+app.get('/api/cf-analytics', cookieAuth, async (req, res) => {
+    try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const start = req.query.start || todayStr;
+        const end = req.query.end || todayStr;
+        const dateKey = `${start}_${end}`;
+
+        if (cfCache.data && (Date.now() - cfCache.timestamp < 5 * 60 * 1000) && cfCache.dateKey === dateKey) {
+            return res.json(cfCache.data);
+        }
+        
+        const data = await sources.cache.getCloudflareAnalytics(start, end);
+        if (data && !data.error) {
+            const enrichedData = {
+                ...data,
+                namespaceName: 'einthusantv-cache',
+                namespaceId: process.env.CF_KV_NAMESPACE_ID
+            };
+            cfCache = { data: enrichedData, timestamp: Date.now(), dateKey };
+            res.json(enrichedData);
+        } else if (data && data.error) {
+            res.status(403).json(data);
+        } else {
+            res.status(500).json({ error: 'Failed to fetch CF Analytics' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.get('/api/kv-keys', cookieAuth, async (req, res) => {
