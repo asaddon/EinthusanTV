@@ -368,7 +368,22 @@
 
             /* Fix CF Analytics Grid squeezing */
             .cf-summary-grid {
-                grid-template-columns: repeat(2, 1fr) !important;
+                grid-template-columns: 1fr;
+            }
+
+            /* Fix Live Cache Explorer Header */
+            .cache-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .cache-header > div {
+                flex-wrap: wrap;
+                width: 100%;
+            }
+            .cache-header > div > button {
+                flex: 1 1 auto;
+                padding: 0.75rem 1rem;
             }
             .cf-stat-col {
                 padding: 1rem;
