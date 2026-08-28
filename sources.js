@@ -1090,19 +1090,25 @@ async function stream(einthusan_id, lang) {
 
         console.info(`${useColors ? '\x1b[32m' : ''}Stream Fetched Successfully For:${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[36m' : ''}${title}${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[33m' : ''}(${year})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[31m' : ''}(EinthusanID: ${einthusan_id} and imdbID: ${imdb})${useColors ? '\x1b[0m' : ''} ${useColors ? '\x1b[32m' : ''}In Language:${useColors ? '\x1b[0m' : ''} ${capitalizedLang}`);
 
-        cachedDict[lang] = result.streams;
-        await cache.set(cacheKey, compressData(cachedDict), 7200, true); // L1 only — stream links expire in 2h anyway, no KV writes
+        let latestCache = await cache.get(cacheKey, true);
+        latestCache = latestCache ? decompressData(latestCache) : {};
+        latestCache[lang] = result.streams;
+        await cache.set(cacheKey, compressData(latestCache), 7200, true); // L1 only — stream links expire in 2h anyway, no KV writes
         return result;
     } catch (err) {
         // Handle specific and general errors
         if (err.message.includes("Einthusan ID could not be retrieved") || err.message.includes("is not valid for the language") || err.message.includes("No title found")) {
-            cachedDict[lang] = [];
-            await cache.set(cacheKey, compressData(cachedDict), 7200, true);
+            let latestCache = await cache.get(cacheKey, true);
+            latestCache = latestCache ? decompressData(latestCache) : {};
+            latestCache[lang] = [];
+            await cache.set(cacheKey, compressData(latestCache), 7200, true);
         } else {
             console.error("Error in Stream Function:", err.message);
             // Cache server errors briefly to prevent spamming Einthusan if they are down
-            cachedDict[lang] = [];
-            await cache.set(cacheKey, compressData(cachedDict), 300, true);
+            let latestCache = await cache.get(cacheKey, true);
+            latestCache = latestCache ? decompressData(latestCache) : {};
+            latestCache[lang] = [];
+            await cache.set(cacheKey, compressData(latestCache), 300, true);
         }
         return { streams: [] };
     }
