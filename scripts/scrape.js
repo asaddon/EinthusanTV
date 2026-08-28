@@ -59,12 +59,32 @@ async function main() {
         // Ensure cache is connected (ioredis connects automatically, but we might want to wait a split second)
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        await sources.fetchRecentMoviesForAllLanguages();
+        const scrapeOutput = await sources.fetchRecentMoviesForAllLanguages();
         
         console.log("Scrape completely finished. Flushing pending KV writes...");
         
         await sources.forceFlushIdMaps();
         await new Promise(resolve => setTimeout(resolve, 3000)); // Give network one last moment
+
+        if (scrapeOutput && scrapeOutput.newMoviesAdded) {
+            console.log("Sending Webhook to Live Render Server to drop its RAM Caches...");
+            try {
+                const webhookUrl = 'https://einthusan.asaddon.com/api/drop-cache';
+                const webhookRes = await axios.get(webhookUrl, {
+                    headers: { 'Authorization': `Bearer ${process.env.CF_API_TOKEN}` },
+                    timeout: 10000
+                });
+                if (webhookRes.data && webhookRes.data.success) {
+                    console.log("✅ Render Server RAM Cache Dropped successfully.");
+                } else {
+                    console.warn("⚠️ Webhook succeeded, but returned unexpected response:", webhookRes.data);
+                }
+            } catch (webhookErr) {
+                console.error("❌ Failed to send Webhook to Render Server:", webhookErr.message);
+            }
+        } else {
+            console.log("No new movies found. Skipping Webhook to Live Render Server.");
+        }
 
         // ============================================================
         // VERIFICATION: Check that each language catalog is in KV

@@ -50,6 +50,7 @@ app.use((req, res, next) => {
         path === '/kv-dashboard' ||
         path === '/api/kv-stats' ||
         path === '/api/cache-explorer' ||
+        path === '/api/drop-cache' ||
         path === '/api/cf-analytics' ||
         path.startsWith('/api/kv-keys') ||
         path.startsWith('/api/kv-value') ||
@@ -157,6 +158,24 @@ app.get('/api/kv-stats', cookieAuth, (req, res) => {
 
 app.get('/api/cache-explorer', cookieAuth, (req, res) => {
     res.json(sources.cache.getCacheDump());
+});
+
+app.get('/api/drop-cache', (req, res, next) => {
+    // 1. Webhook Authentication (for GitHub Actions)
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader === `Bearer ${process.env.CF_API_TOKEN}`) {
+        return next(); 
+    }
+    // 2. Fallback to Dashboard Cookie Authentication (for human users)
+    cookieAuth(req, res, next);
+}, (req, res) => {
+    try {
+        sources.dropAllCaches();
+        res.json({ success: true, message: 'All RAM catalogs and L1 caches forcefully dropped.' });
+    } catch (error) {
+        console.error('Error dropping cache:', error);
+        res.status(500).json({ success: false, error: 'Failed to drop cache.' });
+    }
 });
 
 // Cloudflare Analytics Route

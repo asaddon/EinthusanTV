@@ -307,6 +307,18 @@ function getCatalogFromStore(lang, maxPages) {
     return _catalogStore[`${lang}_${maxPages}`] || null;
 }
 
+function dropAllCaches() {
+    // 1. Wipe permanent RAM catalog store
+    for (const key of Object.keys(_catalogStore)) {
+        delete _catalogStore[key];
+    }
+    // 2. Wipe temporary L1 node-cache
+    if (cache && cache.localCache) {
+        cache.localCache.flushAll();
+    }
+    console.info("🚨 All RAM catalogs and L1 caches have been forcefully dropped.");
+}
+
 async function getCachedCatalog(lang, maxPages) {
     // 1. Check permanent RAM first
     const storeHit = getCatalogFromStore(lang, maxPages);
@@ -543,7 +555,7 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
         }
 
         isFirstRun = false; // Mark first run as complete after the first execution
-        return results;
+        return { results, newMoviesAdded };
     } catch (error) {
         console.error("Error Fetching Movies For All Languages:", error);
         return {};
@@ -1649,5 +1661,6 @@ module.exports = {
     preloadFromKV,
     getCachedCatalog,
     isCatalogFetchInProgress,
+    dropAllCaches,
     forceFlushIdMaps
 };

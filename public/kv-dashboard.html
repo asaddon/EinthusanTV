@@ -515,6 +515,7 @@
             <div style="display: flex; gap: 1rem;">
                 <button id="loadL1Btn">View L1 Cache</button>
                 <button id="loadKVBtn" style="background: linear-gradient(135deg, #f59e0b, #d97706);">View Cloudflare KV</button>
+                <button id="dropCacheBtn" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">Drop RAM Caches</button>
             </div>
         </div>
         
@@ -852,6 +853,32 @@
         // Initialize
         fetchStats();
         setInterval(fetchStats, 2000);
+        
+        dropCacheBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to drop all RAM catalogs and L1 caches? The server will fetch fresh data from KV on the next request.')) return;
+            
+            const originalText = dropCacheBtn.innerText;
+            dropCacheBtn.innerText = 'Dropping...';
+            dropCacheBtn.style.opacity = '0.7';
+            
+            try {
+                const res = await fetch('/api/drop-cache');
+                const data = await res.json();
+                if (data.success) {
+                    alert('Success! All RAM caches have been dropped.');
+                    keyList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Caches dropped.</div>';
+                    jsonViewer.innerText = 'Server RAM is now clear.';
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Network error while dropping cache.');
+            } finally {
+                dropCacheBtn.innerText = originalText;
+                dropCacheBtn.style.opacity = '1';
+            }
+        });
     </script>
 </body>
 </html>
