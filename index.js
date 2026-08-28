@@ -71,7 +71,7 @@ app.use((req, res, next) => {
         
         if (isStremioResource && (!path.includes('/movie/') || isMissingLanguageSlug)) {
             res.setHeader('Access-Control-Allow-Origin', '*');
-            res.setHeader('Cache-Control', 'max-age=604800, stale-while-revalidate');
+            res.setHeader('Cache-Control', 'public, max-age=7200, s-maxage=604800, stale-while-revalidate=7200');
             
             if (path.includes('/stream/')) return res.json({ streams: [] });
             if (path.includes('/meta/')) return res.json({ meta: {} });
@@ -306,7 +306,9 @@ app.use('/assets', express.static(path.join(__dirname, 'vue', 'dist', 'assets'))
 // Utility function to set common headers
 const setCommonHeaders = (res) => {
     if (!res.headersSent) {
-        res.setHeader('Cache-Control', 'max-age=604800, stale-while-revalidate');
+        // max-age=7200 (2 hours) tells the browser/Stremio app to fetch new data after 2 hours
+        // s-maxage=604800 (7 days) tells Cloudflare Edge to cache the data for up to 7 days (until purged)
+        res.setHeader('Cache-Control', 'public, max-age=7200, s-maxage=604800, stale-while-revalidate=7200');
         res.setHeader('Content-Type', 'application/json');
     }
 };
@@ -337,7 +339,7 @@ app.post('/api/setup', (req, res) => {
 // Serve index.html with cache control
 app.get(['/configure/?', '/:configuration/configure/?', '/:rpdbKey/:configuration/configure/?'], (_, res) => {
     if (!res.headersSent) {
-        res.setHeader('Cache-Control', 'max-age=604800, stale-while-revalidate');
+        res.setHeader('Cache-Control', 'public, max-age=7200, s-maxage=604800, stale-while-revalidate=7200');
         res.setHeader('Content-Type', 'text/html');
         res.sendFile(path.join(__dirname, 'vue', 'dist', 'index.html'));
     }
@@ -346,7 +348,7 @@ app.get(['/configure/?', '/:configuration/configure/?', '/:rpdbKey/:configuratio
 // Serve manifest.json
 app.get('/manifest.json', (_, res) => {
     if (!res.headersSent) {
-        res.setHeader('Cache-Control', 'max-age=604800, stale-while-revalidate');
+        res.setHeader('Cache-Control', 'public, max-age=7200, s-maxage=604800, stale-while-revalidate=7200');
         res.setHeader('Content-Type', 'application/json');
         manifest.behaviorHints.configurationRequired = true;
         manifest.catalogs = [];
@@ -395,7 +397,7 @@ app.get('*/configure/manifest.json', (req, res) => {
 // Serve manifest.json with optional RPDB key
 app.get('/:rpdbKey?/:configuration/manifest.json', (req, res) => {
     if (!res.headersSent) {
-        res.setHeader('Cache-Control', 'max-age=604800, stale-while-revalidate');
+        res.setHeader('Cache-Control', 'public, max-age=7200, s-maxage=604800, stale-while-revalidate=7200');
         res.setHeader('Content-Type', 'application/json');
         let { rpdbKey, configuration } = req.params;
 
