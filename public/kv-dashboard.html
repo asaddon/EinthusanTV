@@ -810,12 +810,24 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '70%',
+                cutout: '50%',
+                layout: { padding: 25 },
                 plugins: {
                     legend: { position: 'bottom' },
                     datalabels: {
                         color: '#ffffff',
-                        font: { weight: 'bold', size: 14 },
+                        font: { weight: 'bold', size: 12 },
+                        anchor: (context) => {
+                            let value = context.dataset.data[context.dataIndex];
+                            let sum = context.dataset.data.reduce((a, b) => a + b, 0);
+                            return (sum === 0 || (value * 100 / sum) < 15) ? 'end' : 'center';
+                        },
+                        align: (context) => {
+                            let value = context.dataset.data[context.dataIndex];
+                            let sum = context.dataset.data.reduce((a, b) => a + b, 0);
+                            return (sum === 0 || (value * 100 / sum) < 15) ? 'end' : 'center';
+                        },
+                        offset: 4,
                         formatter: (value, context) => {
                             if (value === 0) return '';
                             let sum = 0;
