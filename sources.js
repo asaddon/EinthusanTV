@@ -110,7 +110,7 @@ class CacheWrapper {
                 const res = await axios.get(url, {
                     headers: { 'Authorization': `Bearer ${this.cfApiToken}` },
                     responseType: 'arraybuffer',
-                    timeout: 4000
+                    timeout: 10000 // Increased to 10s to prevent false empty states
                 });
                 if (res.data) {
                     const buf = Buffer.from(res.data);
@@ -119,7 +119,12 @@ class CacheWrapper {
                     return val;
                 }
             } catch (err) {
-                // Key not in KV or rate limited
+                if (err.response && err.response.status === 404) {
+                    // Key not in KV, safe to return undefined
+                } else {
+                    console.error(`CRITICAL: KV Read Error for ${key}:`, err.message);
+                    throw err; // Must throw so caller doesn't initialize an empty {} database and wipe data!
+                }
             }
         }
 
