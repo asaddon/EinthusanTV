@@ -674,6 +674,7 @@
                     x: { display: false },
                     y: { 
                         beginAtZero: true,
+                        suggestedMax: 10,
                         grid: { color: 'rgba(255,255,255,0.05)' }
                     }
                 },
@@ -823,13 +824,13 @@
                     lineChart.data.datasets[2].data.shift();
                     lineChart.data.datasets[2].data.push(deltaWrites);
                     
-                    lineChart.update();
+                    lineChart.update('none');
                 }
                 prevStats = data;
                 
                 // Update Donut Chart
                 donutChart.data.datasets[0].data = [data.l1Hits || 1, data.kvReads || 1];
-                donutChart.update();
+                donutChart.update('none');
 
             } catch (e) {
                 console.error('Error fetching stats:', e);
