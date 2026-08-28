@@ -341,7 +341,7 @@ async function getCachedCatalog(lang, maxPages) {
 
 function saveCatalogToStore(lang, maxPages, movies) {
     _catalogStore[`${lang}_${maxPages}`] = movies;
-    console.info(`Catalog for ${capitalizeFirstLetter(lang)} (${maxPages} pages, ${movies.length} movies) loaded into permanent RAM.`);
+    console.info(`Catalog for ${capitalizeFirstLetter(lang)} (${movies.length} movies) loaded into permanent RAM.`);
 }
 
 // Preload all catalogs and id_maps from KV into permanent RAM at startup (16 KV GETs total, never again)
