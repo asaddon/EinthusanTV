@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KV Telemetry & Cache Explorer</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -84,6 +85,9 @@
             letter-spacing: 0.05em;
             color: var(--text-muted);
             margin-bottom: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .card-value {
@@ -92,6 +96,8 @@
             display: flex;
             align-items: baseline;
             gap: 0.25rem;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
         }
 
         .card-value span {
@@ -346,7 +352,7 @@
             
             /* Make all dashboards a clean 2-column grid on mobile */
             .dashboard, .dashboard.server-stats {
-                grid-template-columns: repeat(2, 1fr) !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
                 gap: 1rem;
             }
 
@@ -454,10 +460,71 @@
         .custom-modal-actions button {
             flex: 1;
         }
+
+        /* PREMIUM VISUAL ENHANCEMENTS */
+        .bg-orbs {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            overflow: hidden; z-index: -1; pointer-events: none;
+        }
+        .bg-orb {
+            position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.15;
+            animation: float 20s infinite ease-in-out alternate;
+        }
+        .orb-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: #3b82f6; }
+        .orb-2 { bottom: -10%; right: -10%; width: 600px; height: 600px; background: #8b5cf6; animation-delay: -5s; }
+        .orb-3 { top: 40%; left: 40%; width: 400px; height: 400px; background: #10b981; animation-delay: -10s; }
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(50px, 50px) scale(1.1); }
+        }
+
+        .title-live-orb {
+            display: inline-block; width: 12px; height: 12px; background: #10b981;
+            border-radius: 50%; margin-left: 12px; vertical-align: middle;
+            box-shadow: 0 0 10px #10b981, 0 0 20px #10b981;
+            animation: pulse-orb 2s infinite;
+        }
+        @keyframes pulse-orb {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .ram-progress-bg {
+            width: 100%; height: 6px; background: rgba(255,255,255,0.1);
+            border-radius: 3px; margin-top: 12px; overflow: hidden;
+        }
+        .ram-progress-fill {
+            height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #10b981);
+            border-radius: 3px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 1s ease;
+        }
+
+        #toast-container {
+            position: fixed; top: 20px; right: 20px; z-index: 9999;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .toast {
+            background: rgba(20, 20, 30, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border); padding: 1rem 1.5rem; border-radius: 12px;
+            color: #fff; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            display: flex; align-items: center; gap: 10px;
+            transform: translateX(120%); opacity: 0;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
+        }
+        .toast.show { transform: translateX(0); opacity: 1; }
+        .toast.success { border-left: 4px solid #10b981; }
+        .toast.error { border-left: 4px solid #ef4444; }
     </style>
 </head>
 <body>
-    <h1>KV Telemetry Dashboard</h1>
+    <div class="bg-orbs">
+        <div class="bg-orb orb-1"></div>
+        <div class="bg-orb orb-2"></div>
+        <div class="bg-orb orb-3"></div>
+    </div>
+    <div id="toast-container"></div>
+    
+    <h1>KV Telemetry Dashboard<span class="title-live-orb"></span></h1>
     
     <!-- Cloudflare KV Historical Analytics -->
     <div class="cf-analytics-container">
@@ -546,7 +613,8 @@
         <div class="card metric-card">
             <div class="card-title" style="color: #60a5fa;">Server RAM Usage</div>
             <div class="card-value" id="serverRam" style="color: #93c5fd;">0 MB</div>
-            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Resident Set Size</div>
+            <div class="ram-progress-bg"><div class="ram-progress-fill" id="ramProgressFill"></div></div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Render Limit: 512MB</div>
         </div>
 
         <div class="card metric-card">
@@ -622,7 +690,45 @@
     </div>
 
     <script>
+        // UI Enhancements
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = type === 'success' ? `✅ ${message}` : `❌ ${message}`;
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
+        }
+
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                const currentVal = Math.floor(easeProgress * (end - start) + start);
+                
+                if (obj.id === 'serverRam') obj.innerText = currentVal + ' MB';
+                else if (obj.id === 'cpuLoad') obj.innerText = (easeProgress * (end - start) + start).toFixed(2);
+                else obj.innerText = currentVal;
+                
+                if (progress < 1) window.requestAnimationFrame(step);
+                else {
+                    if (obj.id === 'serverRam') obj.innerText = end + ' MB';
+                    else if (obj.id === 'cpuLoad') obj.innerText = end.toFixed(2);
+                    else obj.innerText = end;
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
         // Chart.js Configuration
+        Chart.register(ChartDataLabels);
         Chart.defaults.color = '#94a3b8';
         Chart.defaults.font.family = "'Inter', sans-serif";
         
@@ -678,7 +784,15 @@
                         grid: { color: 'rgba(255,255,255,0.05)' }
                     }
                 },
-                plugins: { legend: { position: 'top' } }
+                plugins: { 
+                    legend: { position: 'top' },
+                    datalabels: {
+                        color: '#ffffff',
+                        align: 'top',
+                        font: { weight: 'bold', size: 10 },
+                        formatter: (value) => value > 0 ? value : ''
+                    }
+                }
             }
         });
         
@@ -698,7 +812,19 @@
                 maintainAspectRatio: false,
                 cutout: '70%',
                 plugins: {
-                    legend: { position: 'bottom' }
+                    legend: { position: 'bottom' },
+                    datalabels: {
+                        color: '#ffffff',
+                        font: { weight: 'bold', size: 14 },
+                        formatter: (value, context) => {
+                            if (value === 0) return '';
+                            let sum = 0;
+                            let dataArr = context.chart.data.datasets[0].data;
+                            dataArr.map(data => { sum += data; });
+                            let percentage = (value * 100 / sum).toFixed(0) + "%";
+                            return value + ' (' + percentage + ')';
+                        }
+                    }
                 }
             }
         });
@@ -805,9 +931,17 @@
                 uptimeStr += h + 'h ' + m + 'm';
                 
                 document.getElementById('uptime').innerText = uptimeStr;
-                document.getElementById('serverRam').innerText = (data.serverRamMb || 0) + ' MB';
-                document.getElementById('cpuLoad').innerText = data.cpuLoad || '0.00';
-                document.getElementById('activeConns').innerText = data.activeConnections || 0;
+                const parseNum = (id) => parseFloat(document.getElementById(id).innerText.replace(/[^0-9.]/g, '')) || 0;
+                
+                animateValue(document.getElementById('serverRam'), parseNum('serverRam'), data.serverRamMb || 0, 1000);
+                animateValue(document.getElementById('cpuLoad'), parseNum('cpuLoad'), parseFloat(data.cpuLoad) || 0, 1000);
+                animateValue(document.getElementById('activeConns'), parseNum('activeConns'), data.activeConnections || 0, 1000);
+
+                const ramPercent = Math.min(((data.serverRamMb || 0) / 512) * 100, 100);
+                document.getElementById('ramProgressFill').style.width = ramPercent + '%';
+                if (ramPercent > 85) document.getElementById('ramProgressFill').style.background = '#ef4444';
+                else if (ramPercent > 70) document.getElementById('ramProgressFill').style.background = '#f59e0b';
+                else document.getElementById('ramProgressFill').style.background = 'linear-gradient(90deg, #3b82f6, #10b981)';
 
                 // Update Line Chart (Deltas)
                 if (prevStats) {
@@ -965,12 +1099,13 @@
                 if (data.success) {
                     keyList.innerHTML = '<div style="color: #10b981; text-align: center; padding: 2rem; font-weight: bold;">Caches dropped successfully.</div>';
                     jsonViewer.innerText = 'Server RAM is now clear.';
+                    showToast('RAM & Edge Caches Purged', 'success');
                 } else {
-                    alert('Error: ' + (data.error || 'Unknown error'));
+                    showToast(data.error || 'Unknown error', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Network error while dropping cache.');
+                showToast('Network error dropping cache', 'error');
             } finally {
                 dropCacheBtn.innerText = originalText;
                 dropCacheBtn.style.opacity = '1';
