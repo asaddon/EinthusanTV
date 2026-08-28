@@ -168,10 +168,11 @@ app.get('/api/drop-cache', (req, res, next) => {
     }
     // 2. Fallback to Dashboard Cookie Authentication (for human users)
     cookieAuth(req, res, next);
-}, (req, res) => {
+}, async (req, res) => {
     try {
         sources.dropAllCaches();
-        res.json({ success: true, message: 'All RAM catalogs and L1 caches forcefully dropped.' });
+        await sources.triggerCloudflarePurge('API/Dashboard');
+        res.json({ success: true, message: 'All RAM catalogs and L1 caches forcefully dropped, and Cloudflare Edge Purge triggered.' });
     } catch (error) {
         console.error('Error dropping cache:', error);
         res.status(500).json({ success: false, error: 'Failed to drop cache.' });

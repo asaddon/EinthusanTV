@@ -1662,5 +1662,6 @@ module.exports = {
     getCachedCatalog,
     isCatalogFetchInProgress,
     dropAllCaches,
+    triggerCloudflarePurge,
     forceFlushIdMaps
 };
