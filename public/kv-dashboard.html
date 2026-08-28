@@ -574,7 +574,7 @@
             <div style="display: flex; gap: 1rem;">
                 <button id="loadL1Btn">View L1 Cache</button>
                 <button id="loadKVBtn" style="background: linear-gradient(135deg, #f59e0b, #d97706);">View Cloudflare KV</button>
-                <button id="dropCacheBtn" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">Drop RAM Caches</button>
+                <button id="dropCacheBtn" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">Drop RAM & Edge Caches</button>
             </div>
         </div>
         
@@ -592,8 +592,8 @@
 
     <div class="custom-modal-overlay" id="dropCacheModal">
         <div class="custom-modal">
-            <h3>Drop RAM Caches?</h3>
-            <p>Are you sure you want to forcefully wipe all catalogs from the server's RAM? The server will re-fetch data from KV on the next request.</p>
+            <h3>Drop RAM & Cloudflare Caches?</h3>
+            <p>Are you sure you want to forcefully wipe all catalogs from the server's RAM and Cloudflare's Edge Cache? The server will automatically re-fetch data from KV in the background.</p>
             <div class="custom-modal-actions">
                 <button id="modalCancelBtn" style="background: rgba(255,255,255,0.1); color: #fff;">Cancel</button>
                 <button id="modalConfirmBtn" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">Drop Caches</button>

@@ -172,7 +172,14 @@ app.get('/api/drop-cache', (req, res, next) => {
     try {
         sources.dropAllCaches();
         await sources.triggerCloudflarePurge('API/Dashboard');
-        res.json({ success: true, message: 'All RAM catalogs and L1 caches forcefully dropped, and Cloudflare Edge Purge triggered.' });
+        
+        // Asynchronously preload from KV to repopulate RAM without waiting for a user request
+        setImmediate(() => {
+            console.log('Initiating automated KV preload after cache drop...');
+            sources.preloadFromKV().catch(e => console.error('Automated KV preload failed:', e.message));
+        });
+
+        res.json({ success: true, message: 'All RAM catalogs and L1 caches forcefully dropped, Cloudflare Edge Purge triggered, and KV preload initiated.' });
     } catch (error) {
         console.error('Error dropping cache:', error);
         res.status(500).json({ success: false, error: 'Failed to drop cache.' });
