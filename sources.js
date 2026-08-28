@@ -294,6 +294,10 @@ let _tmdbMetaStore = {}; // e.g. { "tt1234567": "0", "tt7654321": "Jawan" }
 let _tmdbMetaDirty = false;
 let _lastTmdbUpdate = Date.now();
 
+// In-process IMDb Title Search store (pure RAM, flushed to KV periodically)
+let _imdbSearchStore = {}; // e.g. { "imdb_karz_1980": "tt0214841" }
+let _imdbSearchDirty = false;
+
 function getCatalogFromStore(lang, maxPages) {
     return _catalogStore[`${lang}_${maxPages}`] || null;
 }
@@ -349,7 +353,6 @@ async function preloadFromKV() {
     try {
         let tmdbCached = await cache.get("tmdb_language_filter_map");
         
-
         if (tmdbCached) {
             const decompressed = decompressData(tmdbCached);
             if (decompressed && typeof decompressed === 'object') {
@@ -358,6 +361,19 @@ async function preloadFromKV() {
         }
     } catch (e) {
         console.error(`Failed to preload tmdb_language_filter_map from KV:`, e.message);
+    }
+
+    try {
+        let imdbSearchCached = await cache.get("imdb_search_resolution_map");
+        
+        if (imdbSearchCached) {
+            const decompressed = decompressData(imdbSearchCached);
+            if (decompressed && typeof decompressed === 'object') {
+                _imdbSearchStore = decompressed;
+            }
+        }
+    } catch (e) {
+        console.error(`Failed to preload imdb_search_resolution_map from KV:`, e.message);
     }
 
     console.info('Startup preload from KV complete.');
@@ -403,7 +419,7 @@ async function forceFlushIdMaps() {
         if (_idMapDirty[key]) {
             try {
                 const cacheKey = `einthusan_resolution_map_${key}`;
-                await cache.set(cacheKey, compressData(_idMapStore[key]));
+                await cache.set(cacheKey, compressData(_idMapStore[key]), 31536000); // 1-Year TTL
                 _idMapDirty[key] = false;
                 console.log(`Successfully flushed einthusan_resolution_map for ${lang} to KV.`);
             } catch (e) {
@@ -414,11 +430,21 @@ async function forceFlushIdMaps() {
 
     if (_tmdbMetaDirty) {
         try {
-            await cache.set("tmdb_language_filter_map", compressData(_tmdbMetaStore));
+            await cache.set("tmdb_language_filter_map", compressData(_tmdbMetaStore), 31536000); // 1-Year TTL
             _tmdbMetaDirty = false;
             console.log(`Successfully flushed tmdb_language_filter_map to KV.`);
         } catch (e) {
             console.error(`Failed to flush tmdb_language_filter_map:`, e.message);
+        }
+    }
+
+    if (_imdbSearchDirty) {
+        try {
+            await cache.set("imdb_search_resolution_map", compressData(_imdbSearchStore), 31536000); // 1-Year TTL
+            _imdbSearchDirty = false;
+            console.log(`Successfully flushed imdb_search_resolution_map to KV.`);
+        } catch (e) {
+            console.error(`Failed to flush imdb_search_resolution_map:`, e.message);
         }
     }
 }
@@ -762,12 +788,29 @@ async function getImdbId(title, year) {
     }
 
     const cacheKey = `imdb_${normalizeTitle(cleanedTitle)}_${year || 'any'}`;
-    const cached = await cache.get(cacheKey, true); // l1Only = true
-    if (cached) {
-        //console.log(`Cache Hit For IMDb ID: ${cleanedTitle} ${year ? `(${year})` : ''}`);
-        return decompressData(cached);
+    
+    // 1. FAST RAM LOOKUP: Instantly check Master Dictionary (No L1 cache overhead!)
+    if (_imdbSearchStore[cacheKey]) {
+        return _imdbSearchStore[cacheKey];
+    }
+    
+    // 2. 🚀 INCREDIBLE OPTIMIZATION: Reverse-lookup TMDB Meta Store!
+    // Since _tmdbMetaStore holds { ttNumber: Title } for 15,000+ Indian movies, we can search it in reverse
+    // to find the IMDb ID instantly without hitting the external name-to-imdb API!
+    const normalizedCleanedTitle = normalizeTitle(cleanedTitle);
+    for (const [tt, tmdbTitle] of Object.entries(_tmdbMetaStore)) {
+        if (tmdbTitle && tmdbTitle !== '0' && tmdbTitle !== '1') {
+            if (normalizeTitle(tmdbTitle) === normalizedCleanedTitle) {
+                // We found a direct title match in our local KV cache!
+                // Save to Master Dictionary so we don't have to loop next time
+                _imdbSearchStore[cacheKey] = tt;
+                _imdbSearchDirty = true;
+                return tt;
+            }
+        }
     }
 
+    // 3. EXTERNAL FALLBACK: Query name-to-imdb API
     try {
         const result = await getImdbIdAsync({ name: cleanedTitle, year: year, type: 'movie' }).catch((err) => {
             console.error(`Error Fetching IMDb ID For "${cleanedTitle}":`, err.message);
@@ -775,7 +818,9 @@ async function getImdbId(title, year) {
         });
 
         if (result) {
-            await cache.set(cacheKey, compressData(result), 1800, true); // L1 only — no KV writes for IMDb lookups
+            // Save to Master Dictionary (will be flushed to KV natively!)
+            _imdbSearchStore[cacheKey] = result;
+            _imdbSearchDirty = true;
             return result;
         }
         //console.warn(`${useColors ? '\x1b[33m' : ''}IMDB ID Not Found For Cleaned Title: ${useColors ? '\x1b[0m' : ''}${useColors ? '\x1b[36m' : ''}"${cleanedTitle}"${useColors ? '\x1b[0m' : ''}${cleanedTitle !== title ? `${useColors ? '\x1b[33m' : ''} Original Title: ${useColors ? '\x1b[36m' : ''}"${title}"${useColors ? '\x1b[0m' : ''}` : ''}${year ? ` ${useColors ? '\x1b[33m' : ''}(${year})${useColors ? '\x1b[0m' : ''}` : ''}`);
