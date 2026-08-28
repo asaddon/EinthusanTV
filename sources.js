@@ -507,6 +507,10 @@ const fetchRecentMoviesForAllLanguages = async (maxPages = 15) => {
                 const updatedCache = uniqueNewMovies.concat(cachedMovies);
                 await cache.set(cacheKey, compressData(updatedCache), 604800);
                 console.info(`Added ${uniqueNewMovies.length} new movies for ${capitalizeFirstLetter(lang)}`);
+                
+                // CRUCIAL: Tell Cloudflare Edge to purge this language's cache so Stremio users see the new movies instantly
+                triggerCloudflarePurge(lang);
+                
                 results[lang] = updatedCache;
                 newMoviesAdded = true; // Mark that new movies were added
             } else {
