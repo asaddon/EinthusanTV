@@ -656,6 +656,7 @@
             <h2>Live Cache Explorer</h2>
             <div style="display: flex; gap: 1rem;">
                 <button id="loadL1Btn">View L1 Cache</button>
+                <button id="loadPermBtn" style="background: linear-gradient(135deg, #10b981, #047857);">View Permanent RAM</button>
                 <button id="loadKVBtn" style="background: linear-gradient(135deg, #f59e0b, #d97706);">View Cloudflare KV</button>
                 <button id="dropCacheBtn" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">Drop RAM & Edge Caches</button>
             </div>
@@ -1042,6 +1043,32 @@
                 loadKVBtn.style.opacity = '1';
             }
         });
+
+        const loadPermBtn = document.getElementById('loadPermBtn');
+        loadPermBtn.addEventListener('click', async () => {
+            loadPermBtn.innerText = 'Scanning Permanent RAM...';
+            loadPermBtn.style.opacity = '0.7';
+            currentMode = 'PERM';
+            try {
+                const res = await fetch('/api/kv-keys?type=permanent');
+                if (!res.ok) throw new Error('Failed to fetch Permanent keys');
+                const data = await res.json();
+                
+                cacheData = {};
+                if (data.keys) {
+                    data.keys.forEach(k => cacheData[k] = null);
+                }
+                
+                renderKeyList();
+                jsonViewer.innerText = 'Select a Permanent RAM key to view its data.';
+            } catch (err) {
+                console.error(err);
+                jsonViewer.innerText = 'Error loading Permanent keys.';
+            } finally {
+                loadPermBtn.innerText = 'View Permanent RAM';
+                loadPermBtn.style.opacity = '1';
+            }
+        });
         
         function renderKeyList() {
             keyList.innerHTML = '';
@@ -1063,18 +1090,19 @@
                     if (currentMode === 'L1') {
                         const val = cacheData[key];
                         jsonViewer.innerText = typeof val === 'object' ? JSON.stringify(val, null, 2) : val;
-                    } else if (currentMode === 'KV') {
-                        jsonViewer.innerText = 'Fetching from Cloudflare KV...';
+                    } else if (currentMode === 'KV' || currentMode === 'PERM') {
+                        jsonViewer.innerText = currentMode === 'KV' ? 'Fetching from Cloudflare KV...' : 'Reading from Permanent RAM...';
                         try {
-                            const res = await fetch('/api/kv-value/' + encodeURIComponent(key));
+                            const url = currentMode === 'PERM' ? `/api/kv-value/${encodeURIComponent(key)}?type=permanent` : `/api/kv-value/${encodeURIComponent(key)}`;
+                            const res = await fetch(url);
                             const data = await res.json();
                             if (data.error) {
                                 jsonViewer.innerText = 'Error: ' + data.error;
                             } else {
                                 jsonViewer.innerText = typeof data.value === 'object' ? JSON.stringify(data.value, null, 2) : data.value;
                             }
-                        } catch (err) {
-                            jsonViewer.innerText = 'Network error fetching KV value.';
+                        } catch(err) {
+                            jsonViewer.innerText = 'Error fetching data: ' + err.message;
                         }
                     }
                 };

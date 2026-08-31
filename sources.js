@@ -287,7 +287,7 @@ const cache = new CacheWrapper();
 // ==========================================
 // Holds the 8 language catalog arrays permanently in RAM.
 // KV is only read ONCE at startup per language, written every 6h scrape.
-const _catalogStore = {}; // e.g. { hindi_15: [...movies] }
+const _catalogStore = {}; // e.g. { hindi: [...movies] }
 
 // In-process ID Map store (pure RAM, zero KV reads per lookup after first load)
 const _idMapStore = {}; // e.g. { hindi: { tt1234567: "ABCD" }, ... }
@@ -304,7 +304,7 @@ let _imdbSearchStore = {}; // e.g. { "imdb_karz_1980": "tt0214841" }
 let _imdbSearchDirty = false;
 
 function getCatalogFromStore(lang, maxPages) {
-    return _catalogStore[`${lang}_${maxPages}`] || null;
+    return _catalogStore[lang] || null;
 }
 
 function dropAllCaches() {
@@ -340,7 +340,7 @@ async function getCachedCatalog(lang, maxPages) {
 }
 
 function saveCatalogToStore(lang, maxPages, movies) {
-    _catalogStore[`${lang}_${maxPages}`] = movies;
+    _catalogStore[lang] = movies;
     console.info(`Catalog for ${capitalizeFirstLetter(lang)} (${movies.length} movies) loaded into permanent RAM.`);
 }
 
@@ -1656,6 +1656,21 @@ module.exports = {
             lastIdMapUpdate: _lastIdMapUpdate,
             lastTmdbUpdate: _lastTmdbUpdate
         };
+    },
+    getPermanentKeys: () => {
+        let keys = [];
+        Object.keys(_catalogStore).forEach(k => keys.push(`catalog_${k}`));
+        Object.keys(_idMapStore).forEach(k => keys.push(`id_map_${k}`));
+        if (Object.keys(_tmdbMetaStore).length > 0) keys.push("tmdb_language_filter_map");
+        if (Object.keys(_imdbSearchStore).length > 0) keys.push("imdb_search_resolution_map");
+        return keys;
+    },
+    getPermanentValue: (key) => {
+        if (key.startsWith('catalog_')) return _catalogStore[key.replace('catalog_', '')];
+        if (key.startsWith('id_map_')) return _idMapStore[key.replace('id_map_', '')];
+        if (key === 'tmdb_language_filter_map') return _tmdbMetaStore;
+        if (key === 'imdb_search_resolution_map') return _imdbSearchStore;
+        return null;
     },
     stream,
     getAllRecentMovies,

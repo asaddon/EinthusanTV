@@ -219,12 +219,20 @@ app.get('/api/cf-analytics', cookieAuth, async (req, res) => {
 });
 
 app.get('/api/kv-keys', cookieAuth, async (req, res) => {
+    if (req.query.type === 'permanent') {
+        return res.json({ keys: sources.getPermanentKeys() });
+    }
     const keys = await sources.cache.listKVKeys();
     res.json({ keys });
 });
 
 app.get('/api/kv-value/:key', cookieAuth, async (req, res) => {
     try {
+        if (req.query.type === 'permanent') {
+            const val = sources.getPermanentValue(req.params.key);
+            if (!val) return res.json({ error: "Key not found in permanent RAM." });
+            return res.json({ value: val });
+        }
         const val = await sources.cache.get(req.params.key);
         if (val === undefined) {
             return res.json({ error: "Key not found in KV or expired." });
