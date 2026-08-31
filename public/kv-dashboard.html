@@ -527,56 +527,7 @@
     <h1>KV Telemetry Dashboard<span class="title-live-orb"></span></h1>
     
     <!-- Cloudflare KV Historical Analytics -->
-    <div class="cf-analytics-container">
-        <div class="cf-summary-box">
-            <div class="cf-summary-header" style="justify-content: space-between;">
-                <div>Summary</div>
-                <div style="display: flex; gap: 0.5rem; align-items: center; color: #a1a1aa; font-size: 0.75rem;">
-                    <input type="date" id="cfStart" class="cf-date-input" />
-                    <span>to</span>
-                    <input type="date" id="cfEnd" class="cf-date-input" />
-                </div>
-            </div>
-            <div class="cf-summary-grid">
-                <div class="cf-stat-col">
-                    <div class="cf-stat-label">Reads</div>
-                    <div class="cf-stat-value" id="cfReads">-</div>
-                </div>
-                <div class="cf-stat-col">
-                    <div class="cf-stat-label">Writes</div>
-                    <div class="cf-stat-value" id="cfWrites">-</div>
-                </div>
-                <div class="cf-stat-col">
-                    <div class="cf-stat-label">Lists</div>
-                    <div class="cf-stat-value" id="cfLists">-</div>
-                </div>
-                <div class="cf-stat-col">
-                    <div class="cf-stat-label">Deletes</div>
-                    <div class="cf-stat-value" id="cfDeletes">-</div>
-                </div>
-                <div class="cf-stat-col">
-                    <div class="cf-stat-label">Storage</div>
-                    <div class="cf-stat-value" id="cfStorage">-</div>
-                </div>
-                <div class="cf-stat-col">
-                    <div class="cf-stat-label">KV count</div>
-                    <div class="cf-stat-value" id="cfKvCount">-</div>
-                </div>
-            </div>
-        </div>
-        <div class="cf-instance-box">
-            <div class="cf-summary-header" style="border: none;">Instance Detail</div>
-            <div class="cf-instance-detail">
-                <div class="cf-stat-label">Namespace</div>
-                <div class="cf-stat-value" style="font-size: 0.9rem;" id="cfNsName">-</div>
-            </div>
-            <div class="cf-instance-detail" style="border: none;">
-                <div class="cf-stat-label">Namespace ID</div>
-                <div class="cf-stat-value" style="font-size: 0.8rem; font-family: monospace; color: #a1a1aa;" id="cfNsId">-</div>
-            </div>
-        </div>
-    </div>
-    
+
     <div class="dashboard top-stats">
         <div class="card metric-card hits">
             <div class="card-title" style="color: #34d399;">L1 Memory Hits</div>
@@ -635,6 +586,56 @@
             <div class="card-title" style="color: #a1a1aa;">Server Uptime</div>
             <div class="card-value" id="uptime" style="color: #d4d4d8; font-size: 1.5rem;">0h 0m</div>
             <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Process Duration</div>
+        </div>
+    </div>
+    
+    <div class="cf-analytics-container">
+        <div class="cf-summary-box">
+            <div class="cf-summary-header" style="justify-content: space-between;">
+                <div>Summary</div>
+                <div style="display: flex; gap: 0.5rem; align-items: center; color: #a1a1aa; font-size: 0.75rem;">
+                    <input type="date" id="cfStart" class="cf-date-input" />
+                    <span>to</span>
+                    <input type="date" id="cfEnd" class="cf-date-input" />
+                </div>
+            </div>
+            <div class="cf-summary-grid">
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">Reads</div>
+                    <div class="cf-stat-value" id="cfReads">-</div>
+                </div>
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">Writes</div>
+                    <div class="cf-stat-value" id="cfWrites">-</div>
+                </div>
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">Lists</div>
+                    <div class="cf-stat-value" id="cfLists">-</div>
+                </div>
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">Deletes</div>
+                    <div class="cf-stat-value" id="cfDeletes">-</div>
+                </div>
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">Storage</div>
+                    <div class="cf-stat-value" id="cfStorage">-</div>
+                </div>
+                <div class="cf-stat-col">
+                    <div class="cf-stat-label">KV count</div>
+                    <div class="cf-stat-value" id="cfKvCount">-</div>
+                </div>
+            </div>
+        </div>
+        <div class="cf-instance-box">
+            <div class="cf-summary-header" style="border: none;">Instance Detail</div>
+            <div class="cf-instance-detail">
+                <div class="cf-stat-label">Namespace</div>
+                <div class="cf-stat-value" style="font-size: 0.9rem;" id="cfNsName">-</div>
+            </div>
+            <div class="cf-instance-detail" style="border: none;">
+                <div class="cf-stat-label">Namespace ID</div>
+                <div class="cf-stat-value" style="font-size: 0.8rem; font-family: monospace; color: #a1a1aa;" id="cfNsId">-</div>
+            </div>
         </div>
     </div>
     
