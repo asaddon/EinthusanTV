@@ -50,6 +50,9 @@ class CacheWrapper {
             kvReads: 0,
             kvWrites: 0,
             l1Hits: 0,
+            lastKvRead: null,
+            lastKvWrite: null,
+            lastL1Hit: null,
             startTime: Date.now()
         };
     }
@@ -96,6 +99,7 @@ class CacheWrapper {
         const localVal = this.localCache.get(key);
         if (localVal !== undefined) {
             this.stats.l1Hits++;
+            this.stats.lastL1Hit = Date.now();
             return localVal;
         }
 
@@ -105,6 +109,7 @@ class CacheWrapper {
         // 2. Check L2 Cloudflare KV
         if (this.useCloudflareKV) {
             this.stats.kvReads++;
+            this.stats.lastKvRead = Date.now();
             try {
                 const url = `https://api.cloudflare.com/client/v4/accounts/${this.cfAccountId}/storage/kv/namespaces/${this.cfNamespaceId}/values/${encodeURIComponent(key)}`;
                 const res = await axios.get(url, {
@@ -252,6 +257,7 @@ class CacheWrapper {
         // 2. Save to L2 Cloudflare KV
         if (this.useCloudflareKV) {
             this.stats.kvWrites++;
+            this.stats.lastKvWrite = Date.now();
             try {
                 const url = `https://api.cloudflare.com/client/v4/accounts/${this.cfAccountId}/storage/kv/namespaces/${this.cfNamespaceId}/values/${encodeURIComponent(key)}?expiration_ttl=${Math.max(60, ttlSeconds)}`;
                 await axios.put(url, valToStore, {

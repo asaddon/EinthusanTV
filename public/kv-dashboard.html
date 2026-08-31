@@ -581,17 +581,19 @@
         <div class="card metric-card hits">
             <div class="card-title" style="color: #34d399;">L1 Memory Hits</div>
             <div class="card-value" id="l1Hits" style="color: #6ee7b7;">0</div>
-            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Saved KV Reads</div>
+            <div class="card-title" id="lastL1HitLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #a1a1aa;">Real-time Telemetry (Live)</div>
         </div>
 
         <div class="card metric-card reads">
             <div class="card-title" style="color: #60a5fa;">Cloudflare KV Reads</div>
             <div class="card-value" id="kvReads" style="color: #93c5fd;">0</div>
+            <div class="card-title" id="lastKvReadLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #a1a1aa;">Real-time Telemetry (Live)</div>
         </div>
 
         <div class="card metric-card writes">
             <div class="card-title" style="color: #a78bfa;">Cloudflare KV Writes</div>
             <div class="card-value" id="kvWrites" style="color: #c4b5fd;">0</div>
+            <div class="card-title" id="lastKvWriteLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #a1a1aa;">Real-time Telemetry (Live)</div>
         </div>
     </div>
     
@@ -933,6 +935,24 @@
                 
                 document.getElementById('idMapTime').innerText = formatTimeAgo(data.lastIdMapUpdate);
                 document.getElementById('tmdbTime').innerText = formatTimeAgo(data.lastTmdbUpdate);
+                
+                if (data.lastKvRead) {
+                    document.getElementById('lastKvReadLabel').innerText = formatTimeAgo(data.lastKvRead);
+                } else {
+                    document.getElementById('lastKvReadLabel').innerText = 'No reads since boot';
+                }
+
+                if (data.lastKvWrite) {
+                    document.getElementById('lastKvWriteLabel').innerText = formatTimeAgo(data.lastKvWrite);
+                } else {
+                    document.getElementById('lastKvWriteLabel').innerText = 'No writes since boot';
+                }
+
+                if (data.lastL1Hit) {
+                    document.getElementById('lastL1HitLabel').innerText = formatTimeAgo(data.lastL1Hit);
+                } else {
+                    document.getElementById('lastL1HitLabel').innerText = 'No hits since boot';
+                }
                 
                 // Uptime format
                 const up = data.uptime || 0;
