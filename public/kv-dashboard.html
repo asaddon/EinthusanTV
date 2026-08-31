@@ -640,17 +640,20 @@
     </div>
     
     <div class="charts-container">
-        <div class="card">
-            <div class="card-title">Real-Time Operations</div>
-            <div class="chart-wrapper">
-                <canvas id="lineChart"></canvas>
+        <div class="card" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="card-title">Catalog Popularity</div>
+            <div class="chart-wrapper" style="width: 100%; height: 280px;">
+                <canvas id="catalogChart"></canvas>
             </div>
+            <div class="card-title" style="margin-top: 1rem; font-size: 0.75rem; text-transform: none;">Most Requested Languages</div>
         </div>
-        <div class="card">
-            <div class="card-title">Cache Efficiency Ratio</div>
-            <div class="chart-wrapper">
-                <canvas id="donutChart"></canvas>
+        
+        <div class="card" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="card-title">Cache Efficiency</div>
+            <div class="chart-wrapper" style="width: 100%; height: 280px;">
+                <canvas id="efficiencyChart"></canvas>
             </div>
+            <div class="card-title" style="margin-top: 1rem; font-size: 0.75rem; text-transform: none;">L1 Hits vs Cloudflare Reads</div>
         </div>
     </div>
     
@@ -736,111 +739,84 @@
         Chart.defaults.color = '#94a3b8';
         Chart.defaults.font.family = "'Inter', sans-serif";
         
-        const lineCtx = document.getElementById('lineChart').getContext('2d');
-        const donutCtx = document.getElementById('donutChart').getContext('2d');
+        const catalogCtx = document.getElementById('catalogChart').getContext('2d');
+        const efficiencyCtx = document.getElementById('efficiencyChart').getContext('2d');
         
-        const maxDataPoints = 30; // 60 seconds (2s interval)
-        const timeLabels = Array(maxDataPoints).fill('');
+        // Beautiful bright UI colors for different languages
+        const languageColors = {
+            'hindi': '#ef4444',     // Red
+            'tamil': '#3b82f6',     // Blue
+            'telugu': '#10b981',    // Green
+            'malayalam': '#f59e0b', // Amber
+            'kannada': '#8b5cf6',   // Purple
+            'bengali': '#ec4899',   // Pink
+            'marathi': '#06b6d4',   // Cyan
+            'punjabi': '#f97316'    // Orange
+        };
         
-        const lineChart = new Chart(lineCtx, {
-            type: 'line',
+        const catalogChart = new Chart(catalogCtx, {
+            type: 'bar',
             data: {
-                labels: timeLabels,
-                datasets: [
-                    {
-                        label: 'L1 Hits',
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        data: Array(maxDataPoints).fill(0)
-                    },
-                    {
-                        label: 'KV Reads',
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        data: Array(maxDataPoints).fill(0)
-                    },
-                    {
-                        label: 'KV Writes',
-                        borderColor: '#8b5cf6',
-                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        data: Array(maxDataPoints).fill(0)
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 0 },
-                scales: {
-                    x: { display: false },
-                    y: { 
-                        beginAtZero: true,
-                        suggestedMax: 10,
-                        grid: { color: 'rgba(255,255,255,0.05)' }
-                    }
-                },
-                plugins: { 
-                    legend: { position: 'top' },
-                    datalabels: {
-                        color: '#ffffff',
-                        align: 'top',
-                        font: { weight: 'bold', size: 10 },
-                        formatter: (value) => value > 0 ? value : ''
-                    }
-                }
-            }
-        });
-        
-        const donutChart = new Chart(donutCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['L1 Hits', 'KV Reads'],
+                labels: ['No Data'],
                 datasets: [{
-                    data: [1, 1],
-                    backgroundColor: ['#10b981', '#3b82f6'],
-                    borderWidth: 0,
-                    hoverOffset: 4
+                    label: 'Requests',
+                    data: [1],
+                    backgroundColor: ['#334155'], // Default empty state gray
+                    borderRadius: 4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '50%',
-                layout: { padding: 25 },
+                indexAxis: 'y', // Horizontal bar chart
+                layout: { padding: { right: 40 } }, // Space for datalabels
                 plugins: {
-                    legend: { position: 'bottom' },
+                    legend: { display: false },
                     datalabels: {
-                        color: '#ffffff',
+                        color: '#e2e8f0',
                         font: { weight: 'bold', size: 12 },
-                        anchor: (context) => {
-                            let value = context.dataset.data[context.dataIndex];
-                            let sum = context.dataset.data.reduce((a, b) => a + b, 0);
-                            return (sum === 0 || (value * 100 / sum) < 15) ? 'end' : 'center';
-                        },
-                        align: (context) => {
-                            let value = context.dataset.data[context.dataIndex];
-                            let sum = context.dataset.data.reduce((a, b) => a + b, 0);
-                            return (sum === 0 || (value * 100 / sum) < 15) ? 'end' : 'center';
-                        },
-                        offset: 4,
+                        anchor: 'end',
+                        align: 'right',
                         formatter: (value, context) => {
-                            if (value === 0) return '';
-                            let sum = 0;
-                            let dataArr = context.chart.data.datasets[0].data;
-                            dataArr.map(data => { sum += data; });
-                            let percentage = (value * 100 / sum).toFixed(0) + "%";
-                            return value + ' (' + percentage + ')';
+                            if (value === 0 || context.chart.data.labels[0] === 'No Data') return '';
+                            return value;
                         }
                     }
+                },
+                scales: {
+                    x: { display: false, grid: { display: false } },
+                    y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { weight: 'bold' } }, border: { display: false } }
+                }
+            }
+        });
+
+        const efficiencyChart = new Chart(efficiencyCtx, {
+            type: 'bar',
+            data: {
+                labels: ['L1 Hits', 'KV Reads'],
+                datasets: [{
+                    data: [1, 1],
+                    backgroundColor: ['#10b981', '#3b82f6'],
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { top: 30 } }, // Space for datalabels
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        color: '#e2e8f0',
+                        font: { weight: 'bold', size: 14 },
+                        anchor: 'end',
+                        align: 'top',
+                        formatter: (value) => value > 0 ? value : ''
+                    }
+                },
+                scales: {
+                    y: { display: false, grid: { display: false } },
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { weight: 'bold' } }, border: { display: false } }
                 }
             }
         });
@@ -977,28 +953,24 @@
                 else if (ramPercent > 70) document.getElementById('ramProgressFill').style.background = '#f59e0b';
                 else document.getElementById('ramProgressFill').style.background = 'linear-gradient(90deg, #3b82f6, #10b981)';
 
-                // Update Line Chart (Deltas)
-                if (prevStats) {
-                    const deltaHits = data.l1Hits - prevStats.l1Hits;
-                    const deltaReads = data.kvReads - prevStats.kvReads;
-                    const deltaWrites = data.kvWrites - prevStats.kvWrites;
+                // Update Catalog Popularity Chart
+                if (data.catalogHits && Object.keys(data.catalogHits).length > 0) {
+                    const sortedHits = Object.entries(data.catalogHits).sort((a, b) => b[1] - a[1]);
+                    const labels = sortedHits.map(entry => entry[0].charAt(0).toUpperCase() + entry[0].slice(1)); // Capitalize
+                    const hitsData = sortedHits.map(entry => entry[1]);
+                    const colors = sortedHits.map(entry => languageColors[entry[0]] || '#94a3b8');
                     
-                    lineChart.data.datasets[0].data.shift();
-                    lineChart.data.datasets[0].data.push(deltaHits);
-                    
-                    lineChart.data.datasets[1].data.shift();
-                    lineChart.data.datasets[1].data.push(deltaReads);
-                    
-                    lineChart.data.datasets[2].data.shift();
-                    lineChart.data.datasets[2].data.push(deltaWrites);
-                    
-                    lineChart.update('none');
+                    catalogChart.data.labels = labels;
+                    catalogChart.data.datasets[0].data = hitsData;
+                    catalogChart.data.datasets[0].backgroundColor = colors;
+                    catalogChart.update('none');
                 }
-                prevStats = data;
-                
-                // Update Donut Chart
-                donutChart.data.datasets[0].data = [data.l1Hits || 1, data.kvReads || 1];
-                donutChart.update('none');
+
+                // Update Efficiency Chart
+                if (data.l1Hits > 0 || data.kvReads > 0) {
+                    efficiencyChart.data.datasets[0].data = [data.l1Hits, data.kvReads];
+                    efficiencyChart.update('none');
+                }
 
             } catch (e) {
                 console.error('Error fetching stats:', e);

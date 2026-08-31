@@ -471,6 +471,9 @@ app.get('/:rpdbKey?/:configuration/catalog/movie/:id/:extra?.json', async (req, 
             return res.json({ metas: [] });
         }
 
+        // Track catalog hits
+        sources.cache.stats.catalogHits[catalogId] = (sources.cache.stats.catalogHits[catalogId] || 0) + 1;
+
         const searchParams = extra ? new URLSearchParams(extra) : null;
         let metas;
 

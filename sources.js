@@ -53,6 +53,7 @@ class CacheWrapper {
             lastKvRead: null,
             lastKvWrite: null,
             lastL1Hit: null,
+            catalogHits: {},
             startTime: Date.now()
         };
     }
