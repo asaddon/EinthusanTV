@@ -318,6 +318,11 @@ const setCommonHeaders = (res) => {
         // s-maxage=604800 (7 days) tells Cloudflare Edge to cache the data for up to 7 days (until purged)
         res.setHeader('Cache-Control', 'public, max-age=7200, s-maxage=604800, stale-while-revalidate=7200');
         res.setHeader('Content-Type', 'application/json');
+        
+        // Expose when the server last dropped L1 and preloaded fresh data from Cloudflare KV
+        if (sources.cache && sources.cache.stats && sources.cache.stats.lastPreloadTime) {
+            res.setHeader('X-Last-Cache-Update', sources.cache.stats.lastPreloadTime);
+        }
     }
 };
 

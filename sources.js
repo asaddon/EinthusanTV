@@ -53,6 +53,7 @@ class CacheWrapper {
             lastKvRead: null,
             lastKvWrite: null,
             lastL1Hit: null,
+            lastPreloadTime: null,
             catalogHits: {},
             startTime: Date.now()
         };
@@ -400,7 +401,8 @@ async function preloadFromKV() {
         console.error(`Failed to preload imdb_search_resolution_map from KV:`, e.message);
     }
 
-    console.info('Startup preload from KV complete.');
+    cache.stats.lastPreloadTime = new Date().toISOString();
+    console.info(`Startup preload from KV complete at ${cache.stats.lastPreloadTime}.`);
 }
 
 async function getIdMap(lang) {
