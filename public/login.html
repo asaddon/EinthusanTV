@@ -6,14 +6,14 @@
     <title>Login - EinthusanTV</title>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --glass-bg: rgba(30, 41, 59, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --bg-color: #000000;
+            --glass-bg: rgba(25, 25, 25, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.08);
             --text-main: #f8fafc;
-            --text-muted: #94a3b8;
+            --text-muted: #ffffff;
             --accent-green: #10b981;
-            --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6;
+            --accent-blue: #ff3300;
+            --accent-purple: #ff8c00;
             --error-red: #ef4444;
         }
 
@@ -26,22 +26,20 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.2), transparent 30%),
-                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.2), transparent 30%);
             overflow: hidden;
         }
 
         .login-card {
             background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 20px;
             padding: 3rem;
             width: 100%;
             max-width: 400px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 1), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
             transition: transform 0.3s ease;
         }
 
@@ -53,7 +51,7 @@
             font-size: 2rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
-            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            background: linear-gradient(to right, #ff3300, #ff8c00);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-align: center;
@@ -80,7 +78,7 @@
 
         input {
             width: 100%;
-            background: rgba(15, 23, 42, 0.5);
+            background: rgba(20, 20, 20, 0.5);
             border: 1px solid var(--glass-border);
             border-radius: 10px;
             padding: 0.875rem 1rem;
@@ -93,7 +91,7 @@
         input:focus {
             outline: none;
             border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            box-shadow: 0 0 0 3px rgba(255, 51, 0, 0.2);
         }
 
         button {

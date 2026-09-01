@@ -8,11 +8,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --glass-bg: rgba(30, 41, 59, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --bg-color: #000000;
+            --glass-bg: rgba(25, 25, 25, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.08);
             --text-main: #f8fafc;
-            --text-muted: #94a3b8;
+            --text-muted: #ffffff;
             --accent-green: #10b981;
             --accent-blue: #3b82f6;
             --accent-purple: #8b5cf6;
@@ -25,17 +25,13 @@
             margin: 0;
             padding: 2rem;
             min-height: 100vh;
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
-            background-attachment: fixed;
         }
 
         h1 {
             font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 2.5rem;
-            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            background: linear-gradient(to right, #ff3300, #ff8c00);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-align: center;
@@ -59,15 +55,16 @@
 
         .card {
             background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
+            border-top: 1px solid rgba(255, 255, 255, 0.15); /* Top highlight for 3D effect */
             border-radius: 16px;
             padding: 1.5rem;
             display: flex;
             flex-direction: column;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 1), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
         }
         
         .metric-card {
@@ -75,8 +72,8 @@
         }
 
         .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 1), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
         }
 
         .card-title {
@@ -158,7 +155,7 @@
         button:active { transform: scale(0.98); }
         
         .explorer-grid {
-            display: grid;
+            display: none; /* Hidden by default until a button is pressed */
             grid-template-columns: 300px 1fr;
             gap: 1.5rem;
             height: 500px;
@@ -215,7 +212,7 @@
             font-family: monospace;
             font-size: 0.875rem;
             white-space: pre-wrap;
-            color: #e2e8f0;
+            color: #ffffff;
         }
 
         .footer {
@@ -276,7 +273,7 @@
             padding: 1rem 1.5rem;
             border-bottom: 1px solid var(--glass-border);
             font-size: 0.875rem;
-            color: #d4d4d8;
+            color: #ffffff;
             font-weight: 500;
             display: flex;
             align-items: center;
@@ -288,13 +285,13 @@
             padding: 2px 8px;
             border-radius: 12px;
             font-size: 0.75rem;
-            color: #a1a1aa;
+            color: #ffffff;
         }
 
         .cf-date-input {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid var(--glass-border);
-            color: #d4d4d8;
+            color: #ffffff;
             padding: 2px 8px;
             border-radius: 8px;
             font-size: 0.75rem;
@@ -322,14 +319,14 @@
 
         .cf-stat-label {
             font-size: 0.8rem;
-            color: #a1a1aa;
+            color: #ffffff;
             margin-bottom: 0.5rem;
         }
 
         .cf-stat-value {
             font-size: 1.25rem;
             font-weight: 600;
-            color: #f4f4f5;
+            color: #ffffff;
         }
         
         .cf-instance-detail {
@@ -461,24 +458,7 @@
             flex: 1;
         }
 
-        /* PREMIUM VISUAL ENHANCEMENTS */
-        .bg-orbs {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            overflow: hidden; z-index: -1; pointer-events: none;
-        }
-        .bg-orb {
-            position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.15;
-            animation: float 20s infinite ease-in-out alternate;
-        }
-        .orb-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: #3b82f6; }
-        .orb-2 { bottom: -10%; right: -10%; width: 600px; height: 600px; background: #8b5cf6; animation-delay: -5s; }
-        .orb-3 { top: 40%; left: 40%; width: 400px; height: 400px; background: #10b981; animation-delay: -10s; }
-        @keyframes float {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(50px, 50px) scale(1.1); }
-        }
-
-        .title-live-orb {
+        /* PREMIUM VISUAL ENHANCEMENTS */        .title-live-orb {
             display: inline-block; width: 12px; height: 12px; background: #10b981;
             border-radius: 50%; margin-left: 12px; vertical-align: middle;
             box-shadow: 0 0 10px #10b981, 0 0 20px #10b981;
@@ -517,11 +497,6 @@
     </style>
 </head>
 <body>
-    <div class="bg-orbs">
-        <div class="bg-orb orb-1"></div>
-        <div class="bg-orb orb-2"></div>
-        <div class="bg-orb orb-3"></div>
-    </div>
     <div id="toast-container"></div>
     
     <h1>KV Telemetry Dashboard<span class="title-live-orb"></span></h1>
@@ -532,19 +507,19 @@
         <div class="card metric-card hits">
             <div class="card-title" style="color: #34d399;">L1 Memory Hits</div>
             <div class="card-value" id="l1Hits" style="color: #6ee7b7;">0</div>
-            <div class="card-title" id="lastL1HitLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #a1a1aa;">Real-time Telemetry (Live)</div>
+            <div class="card-title" id="lastL1HitLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #ffffff;">Real-time Telemetry (Live)</div>
         </div>
 
         <div class="card metric-card reads">
             <div class="card-title" style="color: #60a5fa;">Cloudflare KV Reads</div>
             <div class="card-value" id="kvReads" style="color: #93c5fd;">0</div>
-            <div class="card-title" id="lastKvReadLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #a1a1aa;">Real-time Telemetry (Live)</div>
+            <div class="card-title" id="lastKvReadLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #ffffff;">Real-time Telemetry (Live)</div>
         </div>
 
         <div class="card metric-card writes">
             <div class="card-title" style="color: #a78bfa;">Cloudflare KV Writes</div>
             <div class="card-value" id="kvWrites" style="color: #c4b5fd;">0</div>
-            <div class="card-title" id="lastKvWriteLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #a1a1aa;">Real-time Telemetry (Live)</div>
+            <div class="card-title" id="lastKvWriteLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #ffffff;">Real-time Telemetry (Live)</div>
         </div>
     </div>
     
@@ -583,17 +558,35 @@
         </div>
 
         <div class="card metric-card">
-            <div class="card-title" style="color: #a1a1aa;">Server Uptime</div>
-            <div class="card-value" id="uptime" style="color: #d4d4d8; font-size: 1.5rem;">0h 0m</div>
+            <div class="card-title" style="color: #ffffff;">Server Uptime</div>
+            <div class="card-value" id="uptime" style="color: #ffffff; font-size: 1.5rem;">0h 0m</div>
             <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Process Duration</div>
         </div>
     </div>
     
-    <div class="cf-analytics-container">
+        <div class="charts-container">
+        <div class="card" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="card-title">Catalog Popularity</div>
+            <div class="chart-wrapper" style="width: 100%; height: 280px;">
+                <canvas id="catalogChart"></canvas>
+            </div>
+            <div class="card-title" style="margin-top: 1rem; font-size: 0.75rem; text-transform: none;">Most Requested Languages</div>
+        </div>
+        
+        <div class="card" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="card-title">Cache Efficiency</div>
+            <div class="chart-wrapper" style="width: 100%; height: 280px;">
+                <canvas id="efficiencyChart"></canvas>
+            </div>
+            <div class="card-title" style="margin-top: 1rem; font-size: 0.75rem; text-transform: none;">L1 Hits vs Cloudflare Reads</div>
+        </div>
+    </div>
+    
+<div class="cf-analytics-container">
         <div class="cf-summary-box">
             <div class="cf-summary-header" style="justify-content: space-between;">
                 <div>Summary</div>
-                <div style="display: flex; gap: 0.5rem; align-items: center; color: #a1a1aa; font-size: 0.75rem;">
+                <div style="display: flex; gap: 0.5rem; align-items: center; color: #ffffff; font-size: 0.75rem;">
                     <input type="date" id="cfStart" class="cf-date-input" />
                     <span>to</span>
                     <input type="date" id="cfEnd" class="cf-date-input" />
@@ -634,26 +627,8 @@
             </div>
             <div class="cf-instance-detail" style="border: none;">
                 <div class="cf-stat-label">Namespace ID</div>
-                <div class="cf-stat-value" style="font-size: 0.8rem; font-family: monospace; color: #a1a1aa;" id="cfNsId">-</div>
+                <div class="cf-stat-value" style="font-size: 0.8rem; font-family: monospace; color: #ffffff;" id="cfNsId">-</div>
             </div>
-        </div>
-    </div>
-    
-    <div class="charts-container">
-        <div class="card" style="display: flex; flex-direction: column; align-items: center;">
-            <div class="card-title">Catalog Popularity</div>
-            <div class="chart-wrapper" style="width: 100%; height: 280px;">
-                <canvas id="catalogChart"></canvas>
-            </div>
-            <div class="card-title" style="margin-top: 1rem; font-size: 0.75rem; text-transform: none;">Most Requested Languages</div>
-        </div>
-        
-        <div class="card" style="display: flex; flex-direction: column; align-items: center;">
-            <div class="card-title">Cache Efficiency</div>
-            <div class="chart-wrapper" style="width: 100%; height: 280px;">
-                <canvas id="efficiencyChart"></canvas>
-            </div>
-            <div class="card-title" style="margin-top: 1rem; font-size: 0.75rem; text-transform: none;">L1 Hits vs Cloudflare Reads</div>
         </div>
     </div>
     
@@ -664,6 +639,7 @@
                 <button id="loadL1Btn">View L1 Cache</button>
                 <button id="loadPermBtn" style="background: linear-gradient(135deg, #10b981, #047857);">View Permanent RAM</button>
                 <button id="loadKVBtn" style="background: linear-gradient(135deg, #f59e0b, #d97706);">View Cloudflare KV</button>
+                <button id="hideExplorerBtn" style="background: rgba(255,255,255,0.1); color: #fff; display: none;">Hide</button>
                 <button id="dropCacheBtn" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">Drop RAM & Edge Caches</button>
             </div>
         </div>
@@ -736,7 +712,7 @@
 
         // Chart.js Configuration
         Chart.register(ChartDataLabels);
-        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.color = '#ffffff';
         Chart.defaults.font.family = "'Inter', sans-serif";
         
         const catalogCtx = document.getElementById('catalogChart').getContext('2d');
@@ -761,7 +737,7 @@
                 datasets: [{
                     label: 'Requests',
                     data: [1],
-                    backgroundColor: ['#334155'], // Default empty state gray
+                    backgroundColor: ['#0f0f0f'], // Pitch black empty state
                     borderRadius: 4
                 }]
             },
@@ -773,7 +749,7 @@
                 plugins: {
                     legend: { display: false },
                     datalabels: {
-                        color: '#e2e8f0',
+                        color: '#ffffff',
                         font: { weight: 'bold', size: 12 },
                         anchor: 'end',
                         align: 'right',
@@ -785,7 +761,7 @@
                 },
                 scales: {
                     x: { display: false, grid: { display: false } },
-                    y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { weight: 'bold' } }, border: { display: false } }
+                    y: { grid: { display: false }, ticks: { color: '#ffffff', font: { weight: 'bold' } }, border: { display: false } }
                 }
             }
         });
@@ -807,7 +783,7 @@
                 plugins: {
                     legend: { display: false },
                     datalabels: {
-                        color: '#e2e8f0',
+                        color: '#ffffff',
                         font: { weight: 'bold', size: 14 },
                         anchor: 'end',
                         align: 'top',
@@ -816,7 +792,7 @@
                 },
                 scales: {
                     y: { display: false, grid: { display: false } },
-                    x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { weight: 'bold' } }, border: { display: false } }
+                    x: { grid: { display: false }, ticks: { color: '#ffffff', font: { weight: 'bold' } }, border: { display: false } }
                 }
             }
         });
@@ -958,7 +934,7 @@
                     const sortedHits = Object.entries(data.catalogHits).sort((a, b) => b[1] - a[1]);
                     const labels = sortedHits.map(entry => entry[0].charAt(0).toUpperCase() + entry[0].slice(1)); // Capitalize
                     const hitsData = sortedHits.map(entry => entry[1]);
-                    const colors = sortedHits.map(entry => languageColors[entry[0]] || '#94a3b8');
+                    const colors = sortedHits.map(entry => languageColors[entry[0]] || '#ffffff');
                     
                     catalogChart.data.labels = labels;
                     catalogChart.data.datasets[0].data = hitsData;
@@ -1063,7 +1039,15 @@
             }
         });
         
+        const hideExplorerBtn = document.getElementById('hideExplorerBtn');
+        hideExplorerBtn.addEventListener('click', () => {
+            document.querySelector('.explorer-grid').style.display = 'none';
+            hideExplorerBtn.style.display = 'none';
+        });
+
         function renderKeyList() {
+            document.querySelector('.explorer-grid').style.display = 'grid';
+            hideExplorerBtn.style.display = 'inline-block';
             keyList.innerHTML = '';
             const keys = Object.keys(cacheData);
             
