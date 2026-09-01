@@ -34,8 +34,8 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
     const path = req.path;
     
-    // Instantly drop automated vulnerability scanners
-    if (path.endsWith('.php') || path.endsWith('.env') || path.includes('.git') || path.includes('admin')) {
+    // Instantly drop automated vulnerability scanners and rogue scraping bots
+    if (path.endsWith('.php') || path.endsWith('.env') || path.includes('.git') || path.includes('admin') || path === '/t0-free-rpdb/manifest.json') {
         return res.status(403).send('Forbidden');
     }
     
