@@ -56,6 +56,7 @@ app.use((req, res, next) => {
         path.startsWith('/api/kv-value') ||
         path === '/einthusan-gate' ||
         path === '/api/gate-auth' ||
+        path === '/logout' ||
         path === '/'; // root redirects to /configure
 
     if (!isAllowed) {
@@ -127,6 +128,16 @@ app.post('/api/gate-auth', (req, res) => {
         return res.json({ success: true });
     }
     return res.status(401).json({ error: 'Invalid credentials' });
+});
+
+app.get('/logout', (req, res) => {
+    const cookieHeader = req.headers.cookie;
+    if (cookieHeader) {
+        const cookies = Object.fromEntries(cookieHeader.split(';').map(c => c.trim().split('=')));
+        if (cookies.auth_token) activeSessions.delete(cookies.auth_token);
+    }
+    res.setHeader('Set-Cookie', 'auth_token=; HttpOnly; Path=/; Max-Age=0');
+    res.redirect('/einthusan-gate');
 });
 
 app.get('/einthusan-gate', (req, res) => {
