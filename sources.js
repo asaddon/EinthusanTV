@@ -402,7 +402,7 @@ async function preloadFromKV() {
     }
 
     cache.stats.lastPreloadTime = new Date().toISOString();
-    console.info(`Startup preload from KV complete at ${cache.stats.lastPreloadTime}.`);
+    console.info(`Startup preload from KV complete at ${new Date(cache.stats.lastPreloadTime).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' })}.`);
 }
 
 async function getIdMap(lang) {
