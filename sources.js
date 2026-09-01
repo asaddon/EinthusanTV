@@ -1514,10 +1514,6 @@ async function getAllRecentMovies(maxPages, lang, logSummary = false, forceFetch
             }
             
             saveCatalogToStore(lang, maxPages, results); // save only full catalogs to permanent RAM
-            
-            if (hasNewMovies) {
-                triggerCloudflarePurge(lang);
-            }
         }
         
         if (!skipCacheWrite) {

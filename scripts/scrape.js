@@ -67,6 +67,9 @@ async function main() {
         await new Promise(resolve => setTimeout(resolve, 3000)); // Give network one last moment
 
         if (scrapeOutput && scrapeOutput.newMoviesAdded) {
+            console.log("Triggering Cloudflare Edge Purge for all catalogs...");
+            await sources.triggerCloudflarePurge("all updated catalogs");
+            
             console.log("Sending Webhook to Live Render Server to drop its RAM Caches...");
             try {
                 const webhookUrl = 'https://einthusan.asaddon.com/api/drop-cache';
