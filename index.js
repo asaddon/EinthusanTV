@@ -83,6 +83,21 @@ app.use((req, res, next) => {
     next();
 });
 
+// In-Memory Session Store
+const activeSessions = new Set();
+
+// Early exit for unauthenticated dashboard polling to prevent swagger-stats spam
+app.use((req, res, next) => {
+    if (req.path === '/api/kv-stats' || req.path === '/api/cf-analytics') {
+        const cookieHeader = req.headers.cookie || '';
+        const cookies = Object.fromEntries(cookieHeader.split('; ').map(c => c.split('=')));
+        if (!(cookies.auth_token && activeSessions.has(cookies.auth_token))) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+    }
+    next();
+});
+
 // Add swagger-stats monitoring (Crash-proof telemetry dashboard)
 const swStats = require('swagger-stats');
 app.use(swStats.getMiddleware({
@@ -95,9 +110,6 @@ app.use(swStats.getMiddleware({
         return ((username === (process.env.STATS_USERNAME || 'admin')) && (password === process.env.STATS_PASSWORD));
     }
 }));
-
-// In-Memory Session Store
-const activeSessions = new Set();
 
 app.use('/api/gate-auth', express.json());
 
