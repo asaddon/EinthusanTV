@@ -120,6 +120,9 @@
             .charts-container {
                 grid-template-columns: 1fr;
             }
+            .server-stats .card:last-child:nth-child(odd) {
+                grid-column: 1 / -1;
+            }
         }
         
         .chart-wrapper {
@@ -488,13 +491,29 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
-        .ram-progress-bg {
-            width: 100%; height: 6px; background: rgba(255,255,255,0.1);
-            border-radius: 3px; margin-top: 12px; overflow: hidden;
+        .progress-bg {
+            background: rgba(255, 255, 255, 0.1);
+            height: 4px;
+            border-radius: 2px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+            width: 100%;
         }
-        .ram-progress-fill {
-            height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #10b981);
-            border-radius: 3px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 1s ease;
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #10b981);
+            width: 0%;
+            transition: width 1s ease;
+        }
+        .progress-fill.infinite {
+            background: linear-gradient(90deg, #10b981, #fcd34d, #10b981);
+            background-size: 200% 100%;
+            animation: pulse-bar 2s linear infinite;
+            width: 100%;
+        }
+        @keyframes pulse-bar {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
         }
 
         #toast-container {
@@ -528,19 +547,22 @@
         <div class="card metric-card hits">
             <div class="card-title" style="color: #34d399;">L1 Memory Hits</div>
             <div class="card-value" id="l1Hits" style="color: #6ee7b7;">0</div>
-            <div class="card-title" id="lastL1HitLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #ffffff;">Real-time Telemetry (Live)</div>
+            <div class="progress-bg"><div class="progress-fill infinite"></div></div>
+            <div class="card-title" id="lastL1HitLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #ffffff;">No hits since boot</div>
         </div>
 
         <div class="card metric-card reads">
             <div class="card-title" style="color: #60a5fa;">CF KV Reads</div>
             <div class="card-value" id="kvReads" style="color: #93c5fd;">0</div>
-            <div class="card-title" id="lastKvReadLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #ffffff;">Real-time Telemetry (Live)</div>
+            <div class="progress-bg"><div class="progress-fill" id="kvReadsProgress"></div></div>
+            <div class="card-title" id="lastKvReadLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #ffffff;">No reads since boot</div>
         </div>
 
         <div class="card metric-card writes">
             <div class="card-title" style="color: #a78bfa;">CF KV Writes</div>
             <div class="card-value" id="kvWrites" style="color: #c4b5fd;">0</div>
-            <div class="card-title" id="lastKvWriteLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #ffffff;">Real-time Telemetry (Live)</div>
+            <div class="progress-bg"><div class="progress-fill" id="kvWritesProgress"></div></div>
+            <div class="card-title" id="lastKvWriteLabel" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none; color: #ffffff;">No writes since boot</div>
         </div>
     </div>
     
@@ -548,12 +570,14 @@
         <div class="card metric-card">
             <div class="card-title" style="color: #fbbf24;">Learned Movie IDs</div>
             <div class="card-value" id="idMapKeys" style="color: #fcd34d;">0</div>
+            <div class="progress-bg"><div class="progress-fill infinite"></div></div>
             <div class="card-title" id="idMapTime" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Total Mapped Across Langs</div>
         </div>
 
         <div class="card metric-card">
             <div class="card-title" style="color: #f472b6;">TMDB Filter Cache</div>
             <div class="card-value" id="tmdbKeys" style="color: #fbcfe8;">0</div>
+            <div class="progress-bg"><div class="progress-fill infinite"></div></div>
             <div class="card-title" id="tmdbTime" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Total Titles Cached</div>
         </div>
     </div>
@@ -561,27 +585,37 @@
     <div class="dashboard server-stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
         <div class="card metric-card">
             <div class="card-title" style="color: #60a5fa;">Server RAM Usage</div>
-            <div class="card-value" id="serverRam" style="color: #93c5fd;">0 MB</div>
-            <div class="ram-progress-bg"><div class="ram-progress-fill" id="ramProgressFill"></div></div>
+            <div class="card-value" id="serverRam" style="color: #93c5fd; font-size: 1.5rem;">0 MB</div>
+            <div class="progress-bg"><div class="progress-fill" id="ramProgressFill"></div></div>
             <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Render Limit: 512MB</div>
         </div>
 
         <div class="card metric-card">
-            <div class="card-title" style="color: #34d399;">CPU Load (1m)</div>
-            <div class="card-value" id="cpuLoad" style="color: #6ee7b7;">0.00</div>
-            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">System Load Average</div>
+            <div class="card-title" style="color: #34d399;">Process CPU Usage</div>
+            <div class="card-value" id="cpuLoad" style="color: #6ee7b7; font-size: 1.5rem;">0.00 %</div>
+            <div class="progress-bg"><div class="progress-fill" id="cpuProgressFill"></div></div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Render Limit: 100% Core</div>
         </div>
 
         <div class="card metric-card">
             <div class="card-title" style="color: #a78bfa;">Active Connections</div>
-            <div class="card-value" id="activeConns" style="color: #c4b5fd;">0</div>
-            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Concurrent HTTP Streams</div>
+            <div class="card-value" id="activeConns" style="color: #c4b5fd; font-size: 1.5rem;">0</div>
+            <div class="progress-bg"><div class="progress-fill" id="connsProgressFill"></div></div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Max Recommended: 100</div>
         </div>
 
         <div class="card metric-card">
             <div class="card-title" style="color: #ffffff;">Server Uptime</div>
             <div class="card-value" id="uptime" style="color: #ffffff; font-size: 1.5rem;">0h 0m</div>
+            <div class="progress-bg"><div class="progress-fill infinite"></div></div>
             <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Process Duration</div>
+        </div>
+
+        <div class="card metric-card">
+            <div class="card-title" style="color: #fbbf24;">Outbound Bandwidth</div>
+            <div class="card-value" id="bandwidth" style="color: #fcd34d; font-size: 1.5rem;">0 MB</div>
+            <div class="progress-bg"><div class="progress-fill" id="bwProgressFill"></div></div>
+            <div class="card-title" style="margin-top: 0.5rem; font-size: 0.75rem; text-transform: none;">Render Limit: 5 GB</div>
         </div>
     </div>
     
@@ -709,24 +743,18 @@
             }, 4000);
         }
 
-        function animateValue(obj, start, end, duration) {
+        function animateValue(obj, start, end, duration, suffix = '') {
             let startTimestamp = null;
+            const isInt = Number.isInteger(end);
             const step = (timestamp) => {
                 if (!startTimestamp) startTimestamp = timestamp;
                 const progress = Math.min((timestamp - startTimestamp) / duration, 1);
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
-                const currentVal = Math.floor(easeProgress * (end - start) + start);
+                const currentVal = easeProgress * (end - start) + start;
                 
-                if (obj.id === 'serverRam') obj.innerText = currentVal + ' MB';
-                else if (obj.id === 'cpuLoad') obj.innerText = (easeProgress * (end - start) + start).toFixed(2);
-                else obj.innerText = currentVal;
+                obj.innerText = (isInt ? Math.floor(currentVal) : currentVal.toFixed(2)) + suffix;
                 
                 if (progress < 1) window.requestAnimationFrame(step);
-                else {
-                    if (obj.id === 'serverRam') obj.innerText = end + ' MB';
-                    else if (obj.id === 'cpuLoad') obj.innerText = end.toFixed(2);
-                    else obj.innerText = end;
-                }
             };
             window.requestAnimationFrame(step);
         }
@@ -940,8 +968,8 @@
                 document.getElementById('uptime').innerText = uptimeStr;
                 const parseNum = (id) => parseFloat(document.getElementById(id).innerText.replace(/[^0-9.]/g, '')) || 0;
                 
-                animateValue(document.getElementById('serverRam'), parseNum('serverRam'), data.serverRamMb || 0, 1000);
-                animateValue(document.getElementById('cpuLoad'), parseNum('cpuLoad'), parseFloat(data.cpuLoad) || 0, 1000);
+                animateValue(document.getElementById('serverRam'), parseNum('serverRam'), data.serverRamMb || 0, 1000, ' MB');
+                animateValue(document.getElementById('cpuLoad'), parseNum('cpuLoad'), parseFloat(data.cpuLoad) || 0, 1000, ' %');
                 animateValue(document.getElementById('activeConns'), parseNum('activeConns'), data.activeConnections || 0, 1000);
 
                 const ramPercent = Math.min(((data.serverRamMb || 0) / 512) * 100, 100);
@@ -950,13 +978,40 @@
                 else if (ramPercent > 70) document.getElementById('ramProgressFill').style.background = '#f59e0b';
                 else document.getElementById('ramProgressFill').style.background = 'linear-gradient(90deg, #3b82f6, #10b981)';
 
+                // Outbound Bandwidth
+                if (data.outboundBytes !== undefined) {
+                    const mb = (data.outboundBytes / (1024 * 1024)).toFixed(2);
+                    document.getElementById('bandwidth').innerText = `${mb} MB`;
+                    
+                    // 5GB limit (5120 MB)
+                    const bwPercent = Math.min((data.outboundBytes / (5 * 1024 * 1024 * 1024)) * 100, 100);
+                    document.getElementById('bwProgressFill').style.width = `${bwPercent}%`;
+                    document.getElementById('bwProgressFill').style.background = bwPercent > 80 ? 'linear-gradient(90deg, #fbbf24, #ef4444)' : 'linear-gradient(90deg, #fbbf24, #10b981)';
+                }
+
+                // Progress Bars for limited stats
+                const kvReadsPercent = Math.min((data.kvReads / 100000) * 100, 100);
+                document.getElementById('kvReadsProgress').style.width = `${kvReadsPercent}%`;
+                document.getElementById('kvReadsProgress').style.background = kvReadsPercent > 80 ? 'linear-gradient(90deg, #60a5fa, #ef4444)' : 'linear-gradient(90deg, #60a5fa, #34d399)';
+                
+                const kvWritesPercent = Math.min((data.kvWrites / 1000) * 100, 100);
+                document.getElementById('kvWritesProgress').style.width = `${kvWritesPercent}%`;
+                document.getElementById('kvWritesProgress').style.background = kvWritesPercent > 80 ? 'linear-gradient(90deg, #c4b5fd, #ef4444)' : 'linear-gradient(90deg, #c4b5fd, #34d399)';
+
+                const cpuPercent = Math.min((parseFloat(data.cpuLoad || 0) / 1.0) * 100, 100);
+                document.getElementById('cpuProgressFill').style.width = `${cpuPercent}%`;
+                document.getElementById('cpuProgressFill').style.background = cpuPercent > 80 ? 'linear-gradient(90deg, #34d399, #ef4444)' : 'linear-gradient(90deg, #34d399, #10b981)';
+
+                const connsPercent = Math.min(((data.activeConnections || 0) / 100) * 100, 100);
+                document.getElementById('connsProgressFill').style.width = `${connsPercent}%`;
+                document.getElementById('connsProgressFill').style.background = connsPercent > 80 ? 'linear-gradient(90deg, #a78bfa, #ef4444)' : 'linear-gradient(90deg, #a78bfa, #10b981)';
+
                 // Update Catalog Popularity Chart
                 if (data.catalogHits && Object.keys(data.catalogHits).length > 0) {
                     const sortedHits = Object.entries(data.catalogHits).sort((a, b) => b[1] - a[1]);
                     const labels = sortedHits.map(entry => entry[0].charAt(0).toUpperCase() + entry[0].slice(1)); // Capitalize
                     const hitsData = sortedHits.map(entry => entry[1]);
                     const colors = sortedHits.map(entry => languageColors[entry[0]] || '#ffffff');
-                    
                     catalogChart.data.labels = labels;
                     catalogChart.data.datasets[0].data = hitsData;
                     catalogChart.data.datasets[0].backgroundColor = colors;

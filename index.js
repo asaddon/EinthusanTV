@@ -83,6 +83,35 @@ app.use((req, res, next) => {
     next();
 });
 
+let totalOutboundBytes = 0;
+let processCpuUsagePercent = 0.0;
+let lastCpuUsage = process.cpuUsage();
+let lastCpuTime = Date.now();
+
+setInterval(() => {
+    const currentUsage = process.cpuUsage(lastCpuUsage);
+    const currentTime = Date.now();
+    const elapsedTime = currentTime - lastCpuTime;
+    
+    if (elapsedTime > 0) {
+        const totalCpuTime = (currentUsage.user + currentUsage.system) / 1000;
+        processCpuUsagePercent = (totalCpuTime / elapsedTime) * 100;
+    }
+    
+    lastCpuUsage = process.cpuUsage();
+    lastCpuTime = currentTime;
+}, 1000);
+
+app.use((req, res, next) => {
+    res.on('finish', () => {
+        const length = res.getHeader('content-length');
+        if (length) {
+            totalOutboundBytes += parseInt(length, 10);
+        }
+    });
+    next();
+});
+
 // In-Memory Session Store
 const activeSessions = new Set();
 
@@ -166,7 +195,7 @@ app.get('/api/kv-stats', cookieAuth, (req, res) => {
     
     // Server Telemetry
     const serverRamMb = (process.memoryUsage().rss / 1024 / 1024).toFixed(2);
-    const cpuLoad = require('os').loadavg()[0].toFixed(2);
+    const cpuLoad = processCpuUsagePercent.toFixed(2);
     const uptime = process.uptime();
     
     res.json({ 
@@ -175,7 +204,8 @@ app.get('/api/kv-stats', cookieAuth, (req, res) => {
         serverRamMb,
         cpuLoad,
         uptime,
-        activeConnections
+        activeConnections,
+        outboundBytes: totalOutboundBytes
     });
 });
 
