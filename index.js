@@ -185,6 +185,10 @@ app.get('/einthusan-gate', (req, res) => {
     res.sendFile(require('path').join(__dirname, 'public/login.html'));
 });
 
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(require('path').join(__dirname, 'public/favicon.jpg'));
+});
+
 app.get('/kv-dashboard', cookieAuth, (req, res) => {
     res.sendFile(require('path').join(__dirname, 'public/kv-dashboard.html'));
 });
