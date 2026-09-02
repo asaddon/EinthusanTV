@@ -7,8 +7,8 @@
     <style>
         :root {
             --bg-color: #000000;
-            --glass-bg: rgba(25, 25, 25, 0.6);
-            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-bg: rgba(0, 0, 0, 0.5);
+            --glass-border: rgba(255, 255, 255, 0.25);
             --text-main: #f8fafc;
             --text-muted: #ffffff;
             --accent-green: #10b981;
@@ -34,17 +34,19 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
-            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-top: 1px solid rgba(255, 255, 255, 0.5);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             padding: 3rem;
             width: 100%;
             max-width: 400px;
-            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 1), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
-            transition: transform 0.3s ease;
+            box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 1), 0 0 20px rgba(255, 255, 255, 0.03), inset 0 1px 1px 0 rgba(255, 255, 255, 0.25), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .login-card:hover {
             transform: translateY(-5px);
+            box-shadow: 0 30px 50px -10px rgba(0, 0, 0, 1), 0 0 25px rgba(255, 255, 255, 0.05), inset 0 1px 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.15);
         }
 
         h1 {
