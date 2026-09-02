@@ -1081,6 +1081,31 @@ async function stream(einthusan_id, lang) {
 
         if (!mp4Link) throw new Error("No video source found");
 
+        let fileSizeStr = "";
+        let resolutionTag = "";
+        try {
+            const headRes = await axios.head(mp4Link, { timeout: 3000 });
+            const contentLength = headRes.headers['content-length'];
+            if (contentLength) {
+                const bytes = parseInt(contentLength, 10);
+                if (bytes > 0) {
+                    const gb = (bytes / (1024 * 1024 * 1024)).toFixed(2);
+                    fileSizeStr = `\n💾 ${gb} GB`;
+                    
+                    // Estimate resolution based on typical Indian movie lengths (2.5-3 hours)
+                    if (bytes > 1.5 * 1024 * 1024 * 1024) {
+                        resolutionTag = "1080p";
+                    } else if (bytes > 0.8 * 1024 * 1024 * 1024) {
+                        resolutionTag = "720p";
+                    } else {
+                        resolutionTag = "480p";
+                    }
+                }
+            }
+        } catch (e) {
+            // Silently ignore HEAD failures, just won't show file size
+        }
+
         const languageCheck = $('#UIMovieSummary div.info p').text().toLowerCase();
         if (!languageCheck.includes(lang.toLowerCase())) {
             throw new Error(`The Einthusan ID: ${einthusan_id} is not valid for the language: ${lang}`);
@@ -1093,7 +1118,7 @@ async function stream(einthusan_id, lang) {
             streams: [{
                 url: mp4Link,
                 name: `EinthusanTV ⚡️`,
-                title: `🍿 ${title} (${year})\n🌐 ${capitalizedLang}`
+                title: `🍿 ${title} (${year})\n🌐 ${capitalizedLang}${fileSizeStr}${resolutionTag ? `\n📺 ${resolutionTag}` : ''}`
             }]
         };
 
